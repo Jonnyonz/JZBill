@@ -1,0 +1,42 @@
+{
+  "GET /": {
+    "cuerpo": false,
+    "params": []
+  },
+  "GET /api/auth/me": {
+    "cuerpo": false,
+    "params": []
+  },
+  "GET /api/auth/setup/status": {
+    "cuerpo": false,
+    "params": []
+  },
+  "GET /api/health": {
+    "cuerpo": false,
+    "params": []
+  },
+  "GET /panel": {
+    "cuerpo": false,
+    "params": []
+  },
+  "POST /api/auth/clave": {
+    "cuerpo": true,
+    "params": []
+  },
+  "POST /api/auth/login": {
+    "cuerpo": true,
+    "params": []
+  },
+  "POST /api/auth/logout": {
+    "cuerpo": false,
+    "params": []
+  },
+  "POST /api/auth/sesiones/cerrar": {
+    "cuerpo": false,
+    "params": []
+  },
+  "POST /api/auth/setup/admin": {
+    "cuerpo": true,
+    "params": []
+  }
+}
