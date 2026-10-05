@@ -14,6 +14,7 @@ Mismo set común que JZ_Middle_ML-Tracker, sin `httpx` (en la Fase 0 la app no h
 | uvicorn | 0.54.0 | Servidor ASGI que corre bajo systemd | La stdlib no trae servidor ASGI | Python puro |
 | pydantic | 2.13.5 | Validación de los cuerpos JSON (largos máximos, tipos) | Lo exige fastapi | pydantic-core: wheel manylinux |
 | asyncpg | 0.31.0 | Cliente PostgreSQL asíncrono, SQL parametrizado a mano | La stdlib no trae cliente PostgreSQL; jztech-core lo asume | wheel manylinux |
+| cryptography | 50.0.2 | Cifrado en reposo de secretos (certificados y claves de ARCA, clave SMTP) con AES-256-GCM, y lectura de certificados X.509 | La stdlib no trae AES ni parser X.509; escribir criptografía propia está descartado. Es la librería estándar de facto (PyCA) | wheel abi3 manylinux (x86_64 y aarch64), glibc 2.34+: Debian 12/13 y Ubuntu 24.04. Reusa `cffi`. Se importa solo al usar un secreto, no en el arranque |
 | jztech-core | 0.1.5 | Argon2id, sesiones opacas, CSRF, cabeceras, IP real, migraciones, logging | Librería propia de la Suite | Python puro (release de GitHub, con hash) |
 
 Transitivas relevantes: `argon2-cffi` + `argon2-cffi-bindings` + `cffi` (vía jztech-core, wheels
@@ -30,5 +31,4 @@ manylinux), `starlette` 1.7.0 (vía fastapi).
 ## Pendientes de evaluar (no agregadas)
 
 - Cliente ARCA (WSAA/WSFEv1): PyAfipWs o cliente propio. Decisión pendiente antes de la Fase 2.
-- Cifrado en reposo de certificados y claves (Fase 1): requiere elegir librería criptográfica con wheel.
 - Generación de PDF con QR (Fase 3).

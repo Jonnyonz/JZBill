@@ -9,4 +9,5 @@ fastapi==0.141.1
 uvicorn==0.54.0
 pydantic==2.13.5
 asyncpg==0.31.0
+cryptography==50.0.2
 jztech-core @ https://github.com/Jonnyonz/jztech-core/releases/download/v0.1.5/jztech_core-0.1.5-py3-none-any.whl
