@@ -1,0 +1,41 @@
+# Secretos de la instalacion: NUNCA se versionan
+.env
+*.env
+.env.*
+!.env.example
+secrets/
+# Certificados y claves (ARCA/WSAA, TLS, SMTP)
+*.pem
+*.key
+*.crt
+*.cer
+*.csr
+*.p12
+*.pfx
+*.der
+
+# Documentos internos (diseno, plan, notas de fase, instrucciones del asistente): no se publican
+docs/
+CLAUDE.md
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# Respaldos que hace jz-factura-actualizar y volcados de la base
+backups/
+*.dump
+*.sql.gz
+
+# Herramientas locales
+.serena/
+.claude/
+.idea/
+.vscode/
+
+# Paquetes de versiones y wheels para instalar sin internet
+dist/
+wheelhouse/

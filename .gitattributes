@@ -1,0 +1,4 @@
+# Finales de linea LF en el repo y en los paquetes (git archive): los .sh corren en Linux.
+* text=auto eol=lf
+*.png binary
+*.ico binary
