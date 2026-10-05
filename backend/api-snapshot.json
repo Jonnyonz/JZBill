@@ -27,6 +27,12 @@
     "cuerpo": false,
     "params": []
   },
+  "GET /api/parametros-fiscales": {
+    "cuerpo": false,
+    "params": [
+      "query:modo"
+    ]
+  },
   "GET /api/razones-sociales": {
     "cuerpo": false,
     "params": []
@@ -37,11 +43,41 @@
       "path:razon_social_id"
     ]
   },
+  "GET /api/razones-sociales/{razon_social_id}/arca/estado": {
+    "cuerpo": false,
+    "params": [
+      "path:razon_social_id",
+      "query:modo"
+    ]
+  },
+  "GET /api/razones-sociales/{razon_social_id}/arca/ultimo-autorizado": {
+    "cuerpo": false,
+    "params": [
+      "path:razon_social_id",
+      "query:modo",
+      "query:punto_venta_id",
+      "query:tipo_comprobante"
+    ]
+  },
   "GET /api/razones-sociales/{razon_social_id}/certificados": {
     "cuerpo": false,
     "params": [
       "path:razon_social_id",
       "query:modo"
+    ]
+  },
+  "GET /api/razones-sociales/{razon_social_id}/certificados/pedidos": {
+    "cuerpo": false,
+    "params": [
+      "path:razon_social_id",
+      "query:modo"
+    ]
+  },
+  "GET /api/razones-sociales/{razon_social_id}/certificados/pedidos/{pedido_id}": {
+    "cuerpo": false,
+    "params": [
+      "path:pedido_id",
+      "path:razon_social_id"
     ]
   },
   "GET /api/razones-sociales/{razon_social_id}/puntos-venta": {
@@ -98,9 +134,40 @@
     "cuerpo": true,
     "params": []
   },
+  "POST /api/razones-sociales/{razon_social_id}/arca/conectar": {
+    "cuerpo": true,
+    "params": [
+      "path:razon_social_id"
+    ]
+  },
+  "POST /api/razones-sociales/{razon_social_id}/arca/desbloquear": {
+    "cuerpo": true,
+    "params": [
+      "path:razon_social_id"
+    ]
+  },
+  "POST /api/razones-sociales/{razon_social_id}/arca/parametros": {
+    "cuerpo": true,
+    "params": [
+      "path:razon_social_id"
+    ]
+  },
   "POST /api/razones-sociales/{razon_social_id}/certificados": {
     "cuerpo": true,
     "params": [
+      "path:razon_social_id"
+    ]
+  },
+  "POST /api/razones-sociales/{razon_social_id}/certificados/pedidos": {
+    "cuerpo": true,
+    "params": [
+      "path:razon_social_id"
+    ]
+  },
+  "POST /api/razones-sociales/{razon_social_id}/certificados/pedidos/{pedido_id}/certificado": {
+    "cuerpo": true,
+    "params": [
+      "path:pedido_id",
       "path:razon_social_id"
     ]
   },
