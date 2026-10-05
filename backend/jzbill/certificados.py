@@ -7,6 +7,7 @@ Nada del contenido (PEM) va al log."""
 
 import hashlib
 import re
+import unicodedata
 import uuid
 from datetime import datetime, timezone
 from typing import Literal
@@ -33,11 +34,17 @@ class CertificadoNuevo(BaseModel):
     clave_pem: str = Field(max_length=_MAX_PEM)
 
 
+def _sin_acentos(texto: str) -> str:
+    """Solo ASCII para el campo O del CSR (ARCA no lo usa, pero asi ningun formulario se traba con tildes o enies)."""
+    return unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode("ascii").strip()
+
+
 def _proposito(cert_id: uuid.UUID, parte: str) -> str:
     return f"certificado:{cert_id}:{parte}"
 
 
-def _validar(certificado_pem: str, clave_pem: str) -> dict:
+def _validar(certificado_pem: str, clave_pem: str,
+            no_corresponde: str = "La clave privada no corresponde al certificado.") -> dict:
     """Datos para mostrar del certificado si el par certificado/clave es valido; si no, 400 generico."""
     from cryptography import x509
     from cryptography.hazmat.primitives import serialization
@@ -55,7 +62,7 @@ def _validar(certificado_pem: str, clave_pem: str) -> dict:
     publica = serialization.PublicFormat.SubjectPublicKeyInfo
     der = serialization.Encoding.DER
     if cert.public_key().public_bytes(der, publica) != clave.public_key().public_bytes(der, publica):
-        raise HTTPException(400, "La clave privada no corresponde al certificado.")
+        raise HTTPException(400, no_corresponde)
     if cert.not_valid_after_utc <= datetime.now(timezone.utc):
         raise HTTPException(400, "El certificado está vencido.")
     return {
@@ -90,7 +97,8 @@ async def listar(razon_social_id: str, modo: Modo = Query(...), admin: dict = De
 async def _guardar(conn: asyncpg.Connection, rs, modo: str, alias: str, certificado_pem: str, clave_pem: str,
                   admin: dict, ip: str, pedido_id=None) -> asyncpg.Record:
     """Valida el par, lo guarda cifrado como certificado activo del modo (el anterior queda inactivo)."""
-    datos = _validar(certificado_pem, clave_pem)
+    datos = _validar(certificado_pem, clave_pem, "Ese certificado no corresponde a este pedido: cargá el que ARCA "
+                     "devolvió para este CSR.") if pedido_id else _validar(certificado_pem, clave_pem)
     cert_id = uuid.uuid4()
     try:
         certificado_cifrado = cifrado.cifrar(certificado_pem.encode("ascii"), _proposito(cert_id, "certificado"))
@@ -177,7 +185,7 @@ async def crear_pedido(razon_social_id: str, data: PedidoNuevo, request: Request
     clave = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     sujeto = x509.Name([
         x509.NameAttribute(NameOID.COUNTRY_NAME, "AR"),
-        x509.NameAttribute(NameOID.ORGANIZATION_NAME, rs["nombre_legal"][:64]),
+        x509.NameAttribute(NameOID.ORGANIZATION_NAME, _sin_acentos(rs["nombre_legal"])[:64] or "JZBill"),
         x509.NameAttribute(NameOID.COMMON_NAME, alias),
         x509.NameAttribute(NameOID.SERIAL_NUMBER, f"CUIT {rs['cuit']}"),
     ])
