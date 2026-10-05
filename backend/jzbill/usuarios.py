@@ -50,6 +50,11 @@ class Accesos(BaseModel):
     accesos: List[Acceso] = Field(max_length=500)
 
 
+class Sucursales(BaseModel):
+    sucursales: List[str] = Field(max_length=200)
+    predeterminada: Optional[str] = Field(default=None, max_length=40)
+
+
 def _validar_clave(clave: str) -> None:
     if len(clave) < config.PASSWORD_MIN_LENGTH:
         raise HTTPException(400, f"La contraseña debe tener al menos {config.PASSWORD_MIN_LENGTH} caracteres.")
@@ -77,6 +82,14 @@ async def _accesos_de(conn: asyncpg.Connection, usuario_id) -> list:
     return [{"razon_social_id": str(f["razon_social_id"]), "nombre_legal": f["nombre_legal"],
              "modos": list(f["modos"]), "puntos_venta": sorted(por_rs.get(f["razon_social_id"], []))}
             for f in modos]
+
+
+async def _sucursales_de(conn: asyncpg.Connection, usuario_id) -> list:
+    filas = await conn.fetch("""
+        SELECT s.id, s.nombre, us.predeterminada FROM usuario_sucursales us JOIN sucursales s ON s.id = us.sucursal_id
+        WHERE us.usuario_id = $1 ORDER BY us.predeterminada DESC, s.nombre
+    """, usuario_id)
+    return [{"sucursal_id": str(f["id"]), "nombre": f["nombre"], "predeterminada": f["predeterminada"]} for f in filas]
 
 
 async def _usuario_o_404(conn: asyncpg.Connection, usuario_id: str) -> asyncpg.Record:
@@ -115,7 +128,8 @@ async def crear(data: UsuarioNuevo, request: Request, admin: dict = Depends(requ
 @router.get("/{usuario_id}")
 async def ver(usuario_id: str, admin: dict = Depends(require_admin), conn: asyncpg.Connection = Depends(get_conn)):
     fila = await _usuario_o_404(conn, usuario_id)
-    return {**_usuario_salida(fila), "accesos": await _accesos_de(conn, fila["id"])}
+    return {**_usuario_salida(fila), "accesos": await _accesos_de(conn, fila["id"]),
+            "sucursales": await _sucursales_de(conn, fila["id"])}
 
 
 @router.put("/{usuario_id}")
@@ -202,3 +216,31 @@ async def asignar_accesos(usuario_id: str, data: Accesos, request: Request, admi
                         f"{objetivo['usuario']}: {len(vistos)} razones sociales, "
                         f"{len(filas_pv)} puntos de venta restringidos.", client_ip(request))
     return {"accesos": await _accesos_de(conn, objetivo["id"])}
+
+
+@router.put("/{usuario_id}/sucursales")
+async def asignar_sucursales(usuario_id: str, data: Sucursales, request: Request, admin: dict = Depends(require_admin),
+                             conn: asyncpg.Connection = Depends(get_conn)):
+    """Reemplaza las sucursales del usuario. La predeterminada (la que se elige sola al entrar) tiene que ser una de
+    ellas; si no se indica, queda la primera."""
+    objetivo = await _usuario_o_404(conn, usuario_id)
+    ids = []
+    for s_id in data.sucursales:
+        sid = uuid_o_404(s_id)
+        if sid in ids:
+            raise HTTPException(400, "Una sucursal aparece dos veces.")
+        if not await conn.fetchval("SELECT EXISTS (SELECT 1 FROM sucursales WHERE id = $1)", sid):
+            raise HTTPException(400, "Sucursal inexistente.")
+        ids.append(sid)
+    predeterminada = uuid_o_404(data.predeterminada) if data.predeterminada else (ids[0] if ids else None)
+    if predeterminada is not None and predeterminada not in ids:
+        raise HTTPException(400, "La sucursal predeterminada tiene que estar entre las asignadas.")
+    async with conn.transaction():
+        await conn.execute("DELETE FROM usuario_sucursales WHERE usuario_id = $1", objetivo["id"])
+        if ids:
+            await conn.executemany(
+                "INSERT INTO usuario_sucursales (usuario_id, sucursal_id, predeterminada) VALUES ($1, $2, $3)",
+                [(objetivo["id"], sid, sid == predeterminada) for sid in ids])
+        await registrar(conn, admin["id"], admin["usuario"], "USUARIO_SUCURSALES",
+                        f"{objetivo['usuario']}: {len(ids)} sucursales.", client_ip(request))
+    return {"sucursales": await _sucursales_de(conn, objetivo["id"])}
