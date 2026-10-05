@@ -2,7 +2,7 @@
 
 Cambios de JZBill, del más nuevo al más viejo.
 
-## 2026-10-05 - 0.0.1 (Fase 0, sin publicar)
+## 2026-10-05 - 0.1.0
 
 ### Agregado
 - Esqueleto del repo: licencia AGPLv3, DCO, `.env.example`, dependencias con versión exacta y lockfile
