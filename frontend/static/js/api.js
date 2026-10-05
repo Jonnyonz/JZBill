@@ -26,6 +26,55 @@ async function api(url, opciones = {}) {
     return datos;
 }
 
+// Construye un elemento sin HTML: los textos van siempre como texto (nunca innerHTML con datos).
+// Los atributos "on..." solo aceptan funciones (addEventListener): nunca un manejador inline.
+// el('td', { class: 'mono' }, 'texto', otroNodo)
+function el(etiqueta, atributos = {}, ...hijos) {
+    const nodo = document.createElement(etiqueta);
+    for (const [clave, valor] of Object.entries(atributos || {})) {
+        if (valor === null || valor === undefined || valor === false) continue;
+        if (clave.startsWith('on')) {
+            if (typeof valor === 'function') nodo.addEventListener(clave.slice(2), valor);
+        } else if (clave === 'class') {
+            nodo.className = valor;
+        } else {
+            nodo.setAttribute(clave, valor === true ? '' : String(valor));
+        }
+    }
+    for (const hijo of hijos.flat()) {
+        if (hijo === null || hijo === undefined || hijo === false) continue;
+        nodo.append(hijo instanceof Node ? hijo : document.createTextNode(String(hijo)));
+    }
+    return nodo;
+}
+
+function vaciar(nodo) {
+    while (nodo.firstChild) nodo.removeChild(nodo.firstChild);
+    return nodo;
+}
+
+// Fechas: se guardan en UTC y se muestran en hora de Argentina.
+function fechaHora(iso) {
+    return new Date(iso).toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', dateStyle: 'short', timeStyle: 'short' });
+}
+
+function fecha(iso) {
+    return new Date(iso).toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' });
+}
+
+// Botones de escritura: se deshabilitan mientras dura el pedido y el error se muestra en el aviso.
+async function conBoton(boton, accion) {
+    if (boton) boton.disabled = true;
+    try {
+        return await accion();
+    } catch (e) {
+        mostrarMensaje(e.message, 'error');
+        return undefined;
+    } finally {
+        if (boton) boton.disabled = false;
+    }
+}
+
 function mostrarMensaje(texto, tipo = 'ok') {
     const el = document.getElementById('mensaje');
     if (!el) return;
