@@ -1,0 +1,9 @@
+# Lista blanca: a la imagen entra SOLO lo que la app necesita para correr. Nada de .env, claves, certificados,
+# tests, documentos internos ni .git (aunque esten en la carpeta, no llegan al build).
+*
+!requirements.txt
+!backend/jzbill/
+!db/
+!frontend/
+**/__pycache__
+**/*.pyc

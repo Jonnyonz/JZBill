@@ -1,0 +1,86 @@
+# JZBill con Docker: app + PostgreSQL + Caddy (HTTPS). No se usa a mano: lo arma y lo levanta install-docker.sh,
+# que genera la configuracion en JZB_CONF (por defecto /etc/jzbill-docker). Para manejarlo despues, desde la
+# carpeta del repo:
+#   docker compose --env-file /etc/jzbill-docker/jzbill.env ps | logs app | restart app
+#
+# Redes:
+#   bd   interna, sin salida: solo la app llega a PostgreSQL, y PostgreSQL no llega a internet.
+#   web  la de Caddy y la app; le da a la app la salida a internet que necesita para hablar con ARCA.
+# Solo Caddy publica un puerto. La app y la base no se ven desde fuera de Docker.
+name: jzbill
+
+services:
+  db:
+    image: postgres:17-trixie
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - db:/var/lib/postgresql/data
+    networks: [bd]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -q -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 512m
+
+  app:
+    build: .
+    image: jzbill:${JZB_VERSION}
+    restart: unless-stopped
+    env_file: ${JZB_CONF}/jzbill.env
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      SECRETS_KEY_FILE: /run/secrets/clave_secretos
+      # La IP real del cliente solo se toma de Caddy (unica IP de confianza de la red web).
+      TRUSTED_PROXIES: ${JZB_IP_CADDY}/32
+    secrets: [clave_secretos]
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [bd, web]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 192m
+
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    ports:
+      - "${JZB_BIND}:${JZB_HTTPS_PORT}:443"
+    volumes:
+      - ${JZB_CONF}/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [app]
+    networks:
+      web:
+        ipv4_address: ${JZB_IP_CADDY}
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 128m
+
+secrets:
+  clave_secretos:
+    file: ${JZB_CONF}/clave-secretos
+
+volumes:
+  db:
+  caddy_data:
+  caddy_config:
+
+networks:
+  bd:
+    internal: true
+  web:
+    ipam:
+      config:
+        - subnet: ${JZB_SUBRED}

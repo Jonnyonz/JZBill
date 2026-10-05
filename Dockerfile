@@ -1,0 +1,33 @@
+# Imagen de JZBill para la instalacion con Docker (install-docker.sh + compose.yaml). La instalacion nativa
+# (install-native.sh) sigue siendo la recomendada para equipos con pocos recursos.
+#
+# Mismas reglas que la nativa: Python 3.11 (el piso soportado, el mismo con el que se genera el lockfile),
+# dependencias solo como wheels y verificando los hashes de requirements.txt, sin compilador. La imagen no lleva
+# secretos: la configuracion y la clave maestra se montan al correr (ver compose.yaml).
+FROM python:3.11-slim-trixie
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    JZB_INSTALACION=docker
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --require-hashes --only-binary=:all: -r requirements.txt
+
+COPY backend/jzbill backend/jzbill
+COPY db db
+COPY frontend frontend
+
+# Usuario sin privilegios y sin shell. El codigo es de root: la app solo lo lee.
+RUN useradd --system --uid 10001 --user-group --no-create-home --shell /usr/sbin/nologin jzbill
+USER 10001:10001
+
+EXPOSE 8050
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8050/api/health', timeout=4)"]
+
+CMD ["uvicorn", "jzbill.main:app", "--app-dir", "/app/backend", "--host", "0.0.0.0", "--port", "8050", \
+     "--workers", "1", "--no-proxy-headers", "--no-server-header"]
