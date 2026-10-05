@@ -18,6 +18,10 @@ secrets/
 docs/
 CLAUDE.md
 
+# Tests: quedan solo en la maquina de desarrollo, no se publican
+backend/tests/
+pytest.ini
+
 # Python
 __pycache__/
 *.pyc

@@ -1,8 +1,8 @@
 """Usuarios de la pagina: alta inicial con SETUP_TOKEN, login con limite de intentos, sesiones opacas y
 CSRF de jztech_core (mismos criterios que Tracker360 y el middleware), cambio de clave y cierre de sesiones.
 
-Toda ruta que no sea publica depende de require_usuario: el test de backend/tests/test_deny_by_default.py lo
-verifica para todas las rutas de la app."""
+Toda ruta que no sea publica depende de require_usuario: el test de deny-by-default (fuera del repo publico)
+lo verifica para todas las rutas de la app."""
 
 from datetime import datetime, timedelta, timezone
 import logging

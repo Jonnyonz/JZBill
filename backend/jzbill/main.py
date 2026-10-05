@@ -31,7 +31,7 @@ CSP = "; ".join([
 ])
 
 # Rutas publicas a proposito (sin sesion). Toda otra ruta exige require_usuario: lo verifica
-# backend/tests/test_deny_by_default.py. Las paginas HTML son publicas pero no traen datos: los piden a la API.
+# el test de deny-by-default (fuera del repo publico). Las paginas HTML son publicas pero no traen datos: los piden a la API.
 RUTAS_PUBLICAS = [
     "/",
     "/panel",

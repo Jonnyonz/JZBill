@@ -16,7 +16,7 @@ Se instala en el servidor del cliente junto a Tracker360, sobre `jztech-core` (F
 
 | Carpeta / archivo | Contenido |
 |---|---|
-| `backend/` | Aplicación FastAPI (`jzbill/`), tests (`tests/`), herramientas (`tools/`) y contrato de la API (`api-snapshot.json`) |
+| `backend/` | Aplicación FastAPI (`jzbill/`), herramientas (`tools/`) y contrato de la API (`api-snapshot.json`) |
 | `db/` | Migraciones SQL versionadas (`NNNN_descripcion.sql`), se aplican solas al arrancar |
 | `frontend/` | Páginas HTML, CSS y JS sin dependencias externas (CSP estricta: nada inline) |
 | `install-native.sh` | Instalador nativo para Debian/Ubuntu |
@@ -51,13 +51,8 @@ Para correr la app en la máquina local, copiar `.env.example` a `.env` (nunca s
 .venv/bin/uvicorn jzbill.main:app --app-dir backend --port 8050
 ```
 
-Tests, desde la raíz. El de deny-by-default no necesita base; los de autenticación usan un PostgreSQL
-**descartable** (cada test borra el esquema; el nombre de la base tiene que terminar en `_test`):
-
-```bash
-docker run -d --name jzb-pg -p 5433:5432 -e POSTGRES_USER=jzbill -e POSTGRES_PASSWORD=prueba -e POSTGRES_DB=jzbill_test postgres:15-alpine
-JZB_TEST_DB=1 POSTGRES_PORT=5433 POSTGRES_PASSWORD=prueba .venv/bin/python -m pytest
-```
+Los tests (`backend/tests/`, `pytest.ini`) se mantienen fuera del repositorio público, en la máquina de
+desarrollo. `requirements-dev.txt` trae las herramientas para correrlos y para auditar.
 
 Auditoría de dependencias:
 
