@@ -46,7 +46,8 @@ async function vistaRazones(contenedor, elegidaId) {
     const cuerpo = el('tbody');
     for (const rs of lista) {
         const fila = el('tr', { class: 'seleccionable' + (rs.id === elegidaId ? ' elegida' : '') },
-            el('td', {}, rs.nombre_legal, rs.nombre_fantasia ? el('div', { class: 'sub' }, rs.nombre_fantasia) : null),
+            el('td', {}, el('div', { class: 'contexto-chip' }, puntoColor(rs.color), rs.nombre_legal),
+                rs.nombre_fantasia ? el('div', { class: 'sub' }, rs.nombre_fantasia) : null),
             el('td', { class: 'mono' }, rs.cuit_formateado),
             el('td', {}, CONDICIONES_IVA[rs.condicion_iva]),
             el('td', {}, rs.activa ? el('span', { class: 'etiqueta ok' }, 'Activa') : el('span', { class: 'etiqueta neutra' }, 'Inactiva')));
@@ -73,7 +74,8 @@ function detalleRazon(contenedor, rs) {
             el('label', {}, 'Nombre legal', el('input', { name: 'nombre_legal', required: true, maxlength: 200, value: rs.nombre_legal })),
             el('label', {}, 'Nombre de fantasía', el('input', { name: 'nombre_fantasia', maxlength: 200, value: rs.nombre_fantasia })),
             el('label', {}, 'Condición frente al IVA', selectCondicion(rs.condicion_iva)),
-            el('label', {}, 'Domicilio', el('input', { name: 'domicilio', maxlength: 300, value: rs.domicilio }))),
+            el('label', {}, 'Domicilio', el('input', { name: 'domicilio', maxlength: 300, value: rs.domicilio })),
+            el('label', {}, 'Color (barra superior)', el('input', { type: 'color', name: 'color', value: rs.color }))),
         el('label', { class: 'casilla' }, el('input', { type: 'checkbox', name: 'regimen_arba_bsas', checked: rs.regimen_arba_bsas }),
             'Percibe o retiene ingresos brutos de Buenos Aires (régimen especial ARBA)'),
         el('label', { class: 'casilla' }, el('input', { type: 'checkbox', name: 'activa', checked: rs.activa }), 'Activa'),
@@ -83,7 +85,8 @@ function detalleRazon(contenedor, rs) {
         const f = form.elements;
         const r = await conBoton(form.querySelector('button[type=submit]'), () => api(`/api/razones-sociales/${encodeURIComponent(rs.id)}`, { method: 'PUT', body: {
             nombre_legal: f.nombre_legal.value, nombre_fantasia: f.nombre_fantasia.value, condicion_iva: f.condicion_iva.value,
-            domicilio: f.domicilio.value, regimen_arba_bsas: f.regimen_arba_bsas.checked, activa: f.activa.checked } }));
+            domicilio: f.domicilio.value, regimen_arba_bsas: f.regimen_arba_bsas.checked, activa: f.activa.checked,
+            color: f.color.value } }));
         if (r) {
             mostrarMensaje('Cambios guardados.', 'ok');
             await cargarContexto();
@@ -95,7 +98,7 @@ function detalleRazon(contenedor, rs) {
     const tarjetaCert = el('div', { class: 'tarjeta' });
     puntosVenta(tarjetaPv, rs);
     certificados(tarjetaCert, rs, 'empresa');
-    return [el('div', { class: 'tarjeta' }, el('h2', {}, rs.nombre_legal), form),
+    return [el('div', { class: 'tarjeta' }, el('h2', { class: 'contexto-chip' }, puntoColor(rs.color), rs.nombre_legal), form),
             el('div', { class: 'dos-columnas' }, tarjetaPv, tarjetaCert)];
 }
 

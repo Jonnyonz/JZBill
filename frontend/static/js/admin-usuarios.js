@@ -83,7 +83,10 @@ async function detalleUsuario(contenedor, usuarioId) {
         }
     });
     const tarjetaAccesos = el('div', { class: 'tarjeta' });
-    contenedor.append(el('div', { class: 'tarjeta' }, el('h2', {}, `${u.nombre || u.usuario} (${u.usuario})`), form), tarjetaAccesos);
+    const tarjetaSucursales = el('div', { class: 'tarjeta' });
+    contenedor.append(el('div', { class: 'tarjeta' }, el('h2', {}, `${u.nombre || u.usuario} (${u.usuario})`), form),
+        tarjetaSucursales, tarjetaAccesos);
+    await editorSucursales(tarjetaSucursales, u);
     await editorAccesos(tarjetaAccesos, u, razones);
 }
 
@@ -140,4 +143,48 @@ async function editorAccesos(tarjeta, u, razones) {
         if (r) mostrarMensaje('Accesos guardados.', 'ok');
     });
     tarjeta.append(el('div', { class: 'acciones' }, guardar));
+}
+
+async function editorSucursales(tarjeta, u) {
+    vaciar(tarjeta).append(el('h2', {}, 'Sucursales'),
+        el('p', { class: 'ayuda' }, 'Donde trabaja. Al entrar se elige sola la predeterminada, con su punto de venta.'));
+    let sucursales;
+    try {
+        sucursales = await api('/api/sucursales');
+    } catch (e) {
+        mostrarMensaje(e.message, 'error');
+        return;
+    }
+    if (!sucursales.length) {
+        tarjeta.append(el('p', { class: 'ayuda' }, 'Todavía no hay sucursales. Crealas en Sucursales.'));
+        return;
+    }
+    const asignadas = new Map(u.sucursales.map(s => [s.sucursal_id, s.predeterminada]));
+    const filas = [];
+    const cuerpo = el('tbody');
+    for (const s of sucursales) {
+        const casilla = el('input', { type: 'checkbox', checked: asignadas.has(s.id), 'aria-label': 'Asignada: ' + s.nombre });
+        const radio = el('input', { type: 'radio', name: 'sucursal-predeterminada-' + u.id, value: s.id,
+            checked: asignadas.get(s.id) === true, 'aria-label': 'Predeterminada: ' + s.nombre });
+        radio.addEventListener('change', () => { if (radio.checked) casilla.checked = true; });
+        casilla.addEventListener('change', () => { if (!casilla.checked) radio.checked = false; });
+        filas.push({ s, casilla, radio });
+        cuerpo.append(el('tr', {}, el('td', {}, casilla), el('td', {}, s.nombre, s.activa ? null : ' (inactiva)'), el('td', {}, radio)));
+    }
+    const guardar = el('button', { type: 'button' }, 'Guardar sucursales');
+    guardar.addEventListener('click', async () => {
+        const elegidas = filas.filter(f => f.casilla.checked);
+        const predeterminada = elegidas.find(f => f.radio.checked);
+        const cuerpoPut = { sucursales: elegidas.map(f => f.s.id) };
+        if (predeterminada) cuerpoPut.predeterminada = predeterminada.s.id;
+        const r = await conBoton(guardar, () => api(`/api/usuarios/${encodeURIComponent(u.id)}/sucursales`, { method: 'PUT', body: cuerpoPut }));
+        if (r) {
+            u.sucursales = r.sucursales;
+            mostrarMensaje('Sucursales guardadas.', 'ok');
+            editorSucursales(tarjeta, u);
+        }
+    });
+    tarjeta.append(el('div', { class: 'tabla-scroll' }, el('table', {},
+        el('thead', {}, el('tr', {}, el('th', {}, 'Asignada'), el('th', {}, 'Sucursal'), el('th', {}, 'Predeterminada'))), cuerpo)),
+        el('div', { class: 'acciones' }, guardar));
 }
