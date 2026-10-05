@@ -3,6 +3,14 @@
     "cuerpo": false,
     "params": []
   },
+  "GET /api/auditoria": {
+    "cuerpo": false,
+    "params": [
+      "query:antes_de",
+      "query:limite",
+      "query:razon_social_id"
+    ]
+  },
   "GET /api/auth/me": {
     "cuerpo": false,
     "params": []
@@ -11,9 +19,46 @@
     "cuerpo": false,
     "params": []
   },
+  "GET /api/contexto": {
+    "cuerpo": false,
+    "params": []
+  },
   "GET /api/health": {
     "cuerpo": false,
     "params": []
+  },
+  "GET /api/razones-sociales": {
+    "cuerpo": false,
+    "params": []
+  },
+  "GET /api/razones-sociales/{razon_social_id}": {
+    "cuerpo": false,
+    "params": [
+      "path:razon_social_id"
+    ]
+  },
+  "GET /api/razones-sociales/{razon_social_id}/certificados": {
+    "cuerpo": false,
+    "params": [
+      "path:razon_social_id",
+      "query:modo"
+    ]
+  },
+  "GET /api/razones-sociales/{razon_social_id}/puntos-venta": {
+    "cuerpo": false,
+    "params": [
+      "path:razon_social_id"
+    ]
+  },
+  "GET /api/usuarios": {
+    "cuerpo": false,
+    "params": []
+  },
+  "GET /api/usuarios/{usuario_id}": {
+    "cuerpo": false,
+    "params": [
+      "path:usuario_id"
+    ]
   },
   "GET /panel": {
     "cuerpo": false,
@@ -38,5 +83,54 @@
   "POST /api/auth/setup/admin": {
     "cuerpo": true,
     "params": []
+  },
+  "POST /api/razones-sociales": {
+    "cuerpo": true,
+    "params": []
+  },
+  "POST /api/razones-sociales/{razon_social_id}/certificados": {
+    "cuerpo": true,
+    "params": [
+      "path:razon_social_id"
+    ]
+  },
+  "POST /api/razones-sociales/{razon_social_id}/puntos-venta": {
+    "cuerpo": true,
+    "params": [
+      "path:razon_social_id"
+    ]
+  },
+  "POST /api/usuarios": {
+    "cuerpo": true,
+    "params": []
+  },
+  "PUT /api/contexto": {
+    "cuerpo": true,
+    "params": []
+  },
+  "PUT /api/razones-sociales/{razon_social_id}": {
+    "cuerpo": true,
+    "params": [
+      "path:razon_social_id"
+    ]
+  },
+  "PUT /api/razones-sociales/{razon_social_id}/puntos-venta/{punto_venta_id}": {
+    "cuerpo": true,
+    "params": [
+      "path:punto_venta_id",
+      "path:razon_social_id"
+    ]
+  },
+  "PUT /api/usuarios/{usuario_id}": {
+    "cuerpo": true,
+    "params": [
+      "path:usuario_id"
+    ]
+  },
+  "PUT /api/usuarios/{usuario_id}/accesos": {
+    "cuerpo": true,
+    "params": [
+      "path:usuario_id"
+    ]
   }
 }

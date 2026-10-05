@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from jztech_core.security_headers import SecurityHeadersMiddleware
 
-from jzbill import __version__, auth, db
+from jzbill import __version__, auditoria, auth, certificados, contexto, db, razones_sociales, usuarios
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +57,11 @@ install_generic_error_handler(app, "jzbill", field="detail")
 app.add_middleware(SecurityHeadersMiddleware, csp=CSP, permissions_policy="geolocation=(), microphone=(), camera=()")
 
 app.include_router(auth.router)
+app.include_router(contexto.router)
+app.include_router(razones_sociales.router)
+app.include_router(certificados.router)
+app.include_router(usuarios.router)
+app.include_router(auditoria.router)
 
 
 @app.get("/api/health")
