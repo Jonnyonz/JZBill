@@ -50,6 +50,16 @@
       "path:razon_social_id"
     ]
   },
+  "GET /api/sucursales": {
+    "cuerpo": false,
+    "params": []
+  },
+  "GET /api/sucursales/{sucursal_id}": {
+    "cuerpo": false,
+    "params": [
+      "path:sucursal_id"
+    ]
+  },
   "GET /api/usuarios": {
     "cuerpo": false,
     "params": []
@@ -100,6 +110,10 @@
       "path:razon_social_id"
     ]
   },
+  "POST /api/sucursales": {
+    "cuerpo": true,
+    "params": []
+  },
   "POST /api/usuarios": {
     "cuerpo": true,
     "params": []
@@ -121,6 +135,18 @@
       "path:razon_social_id"
     ]
   },
+  "PUT /api/sucursales/{sucursal_id}": {
+    "cuerpo": true,
+    "params": [
+      "path:sucursal_id"
+    ]
+  },
+  "PUT /api/sucursales/{sucursal_id}/puntos-venta": {
+    "cuerpo": true,
+    "params": [
+      "path:sucursal_id"
+    ]
+  },
   "PUT /api/usuarios/{usuario_id}": {
     "cuerpo": true,
     "params": [
@@ -128,6 +154,12 @@
     ]
   },
   "PUT /api/usuarios/{usuario_id}/accesos": {
+    "cuerpo": true,
+    "params": [
+      "path:usuario_id"
+    ]
+  },
+  "PUT /api/usuarios/{usuario_id}/sucursales": {
     "cuerpo": true,
     "params": [
       "path:usuario_id"
