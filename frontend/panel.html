@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>JZBill</title>
-    <link rel="stylesheet" href="/static/css/app.css?v=0.2.0">
+    <link rel="stylesheet" href="/static/css/app.css?v=0.3.0">
 </head>
 <body class="panel">
     <div class="acento-superior"></div>
@@ -21,6 +21,10 @@
         <button class="nav-btn oculto" type="button" data-vista="razones" data-admin title="Razones sociales">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21V5l8-3v19M12 9h8v12M7 8h2M7 12h2M7 16h2M15 13h2M15 17h2M2 21h20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <span class="etiqueta-nav">Razones sociales</span>
+        </button>
+        <button class="nav-btn oculto" type="button" data-vista="sucursales" data-admin title="Sucursales">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9l2-5h14l2 5M3 9h18M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0M5 12v8h14v-8M10 20v-5h4v5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="etiqueta-nav">Sucursales</span>
         </button>
         <button class="nav-btn oculto" type="button" data-vista="usuarios" data-admin title="Usuarios">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 20v-2a4 4 0 0 0-3-3.9M16 2.1a4 4 0 0 1 0 7.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -49,6 +53,7 @@
         <main>
             <section id="vista-inicio" class="vista"></section>
             <section id="vista-razones" class="vista oculto"></section>
+            <section id="vista-sucursales" class="vista oculto"></section>
             <section id="vista-usuarios" class="vista oculto"></section>
             <section id="vista-auditoria" class="vista oculto"></section>
             <section id="vista-cuenta" class="vista oculto">
@@ -67,10 +72,11 @@
     </div>
 
     <p id="mensaje" class="mensaje mensaje-flotante" role="alert"></p>
-    <script src="/static/js/api.js?v=0.2.0"></script>
-    <script src="/static/js/admin-razones.js?v=0.2.0"></script>
-    <script src="/static/js/admin-usuarios.js?v=0.2.0"></script>
-    <script src="/static/js/admin-auditoria.js?v=0.2.0"></script>
-    <script src="/static/js/panel.js?v=0.2.0"></script>
+    <script src="/static/js/api.js?v=0.3.0"></script>
+    <script src="/static/js/admin-razones.js?v=0.3.0"></script>
+    <script src="/static/js/admin-sucursales.js?v=0.3.0"></script>
+    <script src="/static/js/admin-usuarios.js?v=0.3.0"></script>
+    <script src="/static/js/admin-auditoria.js?v=0.3.0"></script>
+    <script src="/static/js/panel.js?v=0.3.0"></script>
 </body>
 </html>

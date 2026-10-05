@@ -1,13 +1,15 @@
-// Panel: barra lateral, avatar con el selector "division empresa" (razon social y modo de esta sesion),
-// vistas por hash (#inicio, #razones, #usuarios, #auditoria, #cuenta) y cambio de contraseña.
+// Panel: barra lateral, avatar con el selector "division empresa" (razon social, modo, sucursal y punto de venta
+// de esta sesion; se elige solo al entrar), vistas por hash y cambio de contraseña.
+// La barra superior toma el color de la razon social; en modo prueba se ve a rayas.
 'use strict';
 
 const ROLES = { administrador: 'Administrador', supervisor: 'Supervisor', cajero: 'Cajero', solo_lectura: 'Solo lectura' };
 const MODOS = { empresa: 'Empresa', prueba: 'Prueba' };
-const TITULOS = { inicio: 'Inicio', razones: 'Razones sociales', usuarios: 'Usuarios', auditoria: 'Auditoría', cuenta: 'Mi cuenta' };
-const VISTAS_ADMIN = ['razones', 'usuarios', 'auditoria'];
+const TITULOS = { inicio: 'Inicio', razones: 'Razones sociales', sucursales: 'Sucursales', usuarios: 'Usuarios',
+                  auditoria: 'Auditoría', cuenta: 'Mi cuenta' };
+const VISTAS_ADMIN = ['razones', 'sucursales', 'usuarios', 'auditoria'];
 
-const Panel = { yo: null, contexto: null, opciones: [] };
+const Panel = { yo: null, contexto: null, opciones: [], sucursales: [] };
 
 function esAdmin() { return Panel.yo && Panel.yo.rol === 'administrador'; }
 
@@ -16,57 +18,78 @@ function iniciales(texto) {
     return ((partes[0] || '?')[0] + (partes[1] ? partes[1][0] : '')).toUpperCase();
 }
 
-// --- Contexto (razon social y modo de esta sesion) ---
+function numeroPv(numero) { return String(numero).padStart(5, '0'); }
+
+// --- Contexto de la sesion ---
 async function cargarContexto() {
     const datos = await api('/api/contexto');
     Panel.contexto = datos.actual;
     Panel.opciones = datos.opciones;
+    Panel.sucursales = datos.sucursales;
+    const c = Panel.contexto;
+    const prueba = !!(c && c.modo === 'prueba');
+    document.body.classList.toggle('modo-prueba', prueba);
+    if (c && /^#[0-9a-f]{6}$/i.test(c.color)) document.documentElement.style.setProperty('--color-rs', c.color);
+    else document.documentElement.style.removeProperty('--color-rs');
     const chip = vaciar(document.getElementById('contexto-chip'));
-    const prueba = Panel.contexto && Panel.contexto.modo === 'prueba';
-    document.body.classList.toggle('modo-prueba', !!prueba);
-    if (Panel.contexto) {
-        chip.append(
-            el('strong', {}, Panel.contexto.nombre_fantasia || Panel.contexto.nombre_legal),
-            el('span', { class: 'mono' }, Panel.contexto.cuit),
-            el('span', { class: 'etiqueta ' + (prueba ? 'aviso' : 'acento') }, MODOS[Panel.contexto.modo]));
+    if (c) {
+        // append() del DOM convierte null en el texto "null": se filtran las partes vacias.
+        chip.append(...[puntoColor(c.color),
+            el('strong', {}, c.nombre_fantasia || c.nombre_legal),
+            el('span', { class: 'mono' }, c.cuit),
+            c.sucursal_nombre ? el('span', {}, c.sucursal_nombre) : null,
+            c.punto_venta_numero ? el('span', { class: 'mono' }, 'PV ' + numeroPv(c.punto_venta_numero)) : null,
+            el('span', { class: 'etiqueta ' + (prueba ? 'aviso' : 'acento') }, MODOS[c.modo])].filter(Boolean));
     } else {
-        chip.append(el('span', {}, 'Sin razón social elegida'));
+        chip.append(el('span', {}, 'Sin razón social asignada'));
     }
     armarMenu();
 }
 
-async function elegirContexto(razonSocialId, modo, boton) {
-    const r = await conBoton(boton, () => api('/api/contexto', { method: 'PUT', body: { razon_social_id: razonSocialId, modo } }));
+async function elegirContexto(cuerpo, boton) {
+    const r = await conBoton(boton, () => api('/api/contexto', { method: 'PUT', body: cuerpo }));
     if (r === undefined) return;
     await cargarContexto();
     cerrarMenu();
     mostrarVista(vistaActual());
-    mostrarMensaje(`Trabajando en modo ${MODOS[modo].toLowerCase()}.`, 'ok');
 }
 
 // --- Menu del avatar ---
 function armarMenu() {
     const menu = vaciar(document.getElementById('menu-avatar'));
+    const c = Panel.contexto;
     menu.append(
         el('div', {}, el('strong', {}, Panel.yo.nombre || Panel.yo.usuario), ' ',
             el('span', { class: 'etiqueta neutra' }, ROLES[Panel.yo.rol] || Panel.yo.rol)),
         el('h3', {}, 'División empresa'));
+    let selectorSucursal = null;
+    if (Panel.sucursales.length) {
+        selectorSucursal = el('select', { 'aria-label': 'Sucursal' });
+        for (const s of Panel.sucursales) {
+            selectorSucursal.append(el('option', { value: s.sucursal_id, selected: c ? c.sucursal_id === s.sucursal_id : s.predeterminada },
+                s.nombre + (s.predeterminada ? ' (predeterminada)' : '')));
+        }
+        menu.append(el('label', {}, 'Sucursal', selectorSucursal));
+    }
     if (!Panel.opciones.length) {
         menu.append(el('p', { class: 'ayuda' }, esAdmin()
             ? 'Todavía no hay razones sociales activas. Creá una en Razones sociales.'
             : 'No tiene razones sociales asignadas. Pedíselas a un administrador.'));
     }
     for (const op of Panel.opciones) {
-        const esActual = Panel.contexto && Panel.contexto.razon_social_id === op.razon_social_id;
+        const esActual = c && c.razon_social_id === op.razon_social_id;
         const botones = op.modos.map(modo => {
-            const elegido = esActual && Panel.contexto.modo === modo;
-            const b = el('button', { type: 'button', class: elegido ? '' : 'secundario', 'aria-pressed': elegido ? 'true' : 'false' },
-                MODOS[modo]);
-            b.addEventListener('click', () => elegirContexto(op.razon_social_id, modo, b));
+            const elegido = esActual && c.modo === modo;
+            const b = el('button', { type: 'button', class: elegido ? '' : 'secundario', 'aria-pressed': elegido ? 'true' : 'false' }, MODOS[modo]);
+            b.addEventListener('click', () => {
+                const cuerpo = { razon_social_id: op.razon_social_id, modo };
+                if (selectorSucursal) cuerpo.sucursal_id = selectorSucursal.value;
+                elegirContexto(cuerpo, b);
+            });
             return b;
         });
         menu.append(el('div', { class: 'opcion-rs' + (esActual ? ' actual' : '') },
-            el('div', {}, el('strong', {}, op.nombre_fantasia || op.nombre_legal)),
+            el('div', { class: 'contexto-chip' }, puntoColor(op.color), el('strong', {}, op.nombre_fantasia || op.nombre_legal)),
             el('div', { class: 'sub mono' }, op.cuit),
             el('div', { class: 'acciones' }, botones)));
     }
@@ -113,25 +136,30 @@ function mostrarVista(nombre) {
     const contenedor = document.getElementById('vista-' + nombre);
     if (nombre === 'inicio') vistaInicio(contenedor);
     else if (nombre === 'razones') vistaRazones(contenedor);
+    else if (nombre === 'sucursales') vistaSucursales(contenedor);
     else if (nombre === 'usuarios') vistaUsuarios(contenedor);
     else if (nombre === 'auditoria') vistaAuditoria(contenedor);
 }
 
 function vistaInicio(contenedor) {
     vaciar(contenedor);
+    const c = Panel.contexto;
     const tarjeta = el('div', { class: 'tarjeta' });
-    if (Panel.contexto) {
+    if (c) {
         tarjeta.append(
-            el('h2', {}, Panel.contexto.nombre_legal),
+            el('h2', { class: 'contexto-chip' }, puntoColor(c.color), c.nombre_legal),
             el('dl', { class: 'datos' },
-                el('dt', {}, 'CUIT'), el('dd', { class: 'mono' }, Panel.contexto.cuit),
-                el('dt', {}, 'Modo'), el('dd', {}, MODOS[Panel.contexto.modo]),
+                el('dt', {}, 'CUIT'), el('dd', { class: 'mono' }, c.cuit),
+                el('dt', {}, 'Modo'), el('dd', {}, MODOS[c.modo]),
+                el('dt', {}, 'Sucursal'), el('dd', {}, c.sucursal_nombre || 'Sin sucursal asignada'),
+                el('dt', {}, 'Punto de venta'), el('dd', { class: 'mono' }, c.punto_venta_numero ? numeroPv(c.punto_venta_numero) : 'Sin asignar'),
                 el('dt', {}, 'Rol'), el('dd', {}, ROLES[Panel.yo.rol])),
-            el('p', { class: 'ayuda' }, 'La facturación llega en las próximas versiones. Para cambiar de razón social o de modo, usá el menú del avatar.'));
+            el('p', { class: 'ayuda' }, 'La facturación llega en las próximas versiones. Para cambiar de razón social, modo o sucursal, usá el menú del avatar.'));
     } else {
-        tarjeta.append(el('h2', {}, 'Elegí con qué razón social trabajar'),
-            el('p', { class: 'ayuda' }, 'Abrí el menú del avatar (abajo a la izquierda) y elegí una razón social y el modo: Empresa (real) o Prueba (homologación de ARCA, sin validez fiscal).'),
-            el('div', { class: 'acciones' }, el('button', { type: 'button', onclick: (ev) => { ev.stopPropagation(); abrirMenu(); } }, 'Elegir razón social')));
+        tarjeta.append(el('h2', {}, 'Sin razones sociales'),
+            el('p', { class: 'ayuda' }, esAdmin()
+                ? 'Creá la primera razón social en Razones sociales.'
+                : 'Todavía no tiene razones sociales asignadas. Pedíselas a un administrador.'));
     }
     contenedor.append(tarjeta);
 }
