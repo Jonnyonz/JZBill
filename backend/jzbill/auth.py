@@ -49,11 +49,12 @@ def client_ip(request: Request) -> str:
 
 
 async def registrar(conn: asyncpg.Connection, usuario_id, usuario: str, accion: str, detalle: str = "",
-                    ip: str = "") -> None:
+                    ip: str = "", razon_social_id=None) -> None:
     """Auditoria de acciones sensibles. Nunca recibe claves, tokens ni secretos."""
     await conn.execute(
-        "INSERT INTO auditoria (usuario_id, usuario, accion, detalle, ip) VALUES ($1, $2, $3, $4, $5)",
-        usuario_id, usuario[:50], accion[:60], detalle, ip[:64])
+        "INSERT INTO auditoria (usuario_id, usuario, accion, detalle, ip, razon_social_id) "
+        "VALUES ($1, $2, $3, $4, $5, $6)",
+        usuario_id, usuario[:50], accion[:60], detalle, ip[:64], razon_social_id)
 
 
 def _ttl() -> timedelta:
@@ -83,11 +84,13 @@ async def require_usuario(request: Request, conn: asyncpg.Connection = Depends(g
         uid = uuid.UUID(usuario_id)
     except ValueError:
         raise HTTPException(401, "Sesión expirada.")
-    usuario = await conn.fetchrow("SELECT id, usuario, nombre, activo FROM usuarios WHERE id = $1", uid)
+    # El rol se lee en cada pedido: un cambio de rol vale desde el pedido siguiente, sin esperar otro login.
+    usuario = await conn.fetchrow("SELECT id, usuario, nombre, rol, activo FROM usuarios WHERE id = $1", uid)
     if not usuario or not usuario["activo"]:
         raise HTTPException(401, "Sesión expirada.")
     await enforce_csrf(request, token, _CSRF_SUJETO)
-    return {"id": usuario["id"], "usuario": usuario["usuario"], "nombre": usuario["nombre"], "token": token}
+    return {"id": usuario["id"], "usuario": usuario["usuario"], "nombre": usuario["nombre"], "rol": usuario["rol"],
+            "token": token}
 
 
 # --- Limite de intentos (se cuenta ANTES de verificar la clave) ---
@@ -181,7 +184,8 @@ async def setup_admin(data: SetupInput, request: Request, response: Response,
         await conn.execute("SELECT pg_advisory_xact_lock(hashtext('jzbill_setup_admin'))")
         if await conn.fetchval("SELECT COUNT(*) FROM usuarios"):
             raise HTTPException(403, "La configuración inicial ya fue completada.")
-        uid = await conn.fetchval("INSERT INTO usuarios (usuario, nombre, clave_hash) VALUES ($1, $2, $3) RETURNING id",
+        uid = await conn.fetchval("INSERT INTO usuarios (usuario, nombre, clave_hash, rol) "
+                                  "VALUES ($1, $2, $3, 'administrador') RETURNING id",
                                   usuario, data.nombre.strip(), hashed)
         await registrar(conn, uid, usuario, "SETUP_ADMIN", "Administrador inicial creado.", ip)
     await conn.execute("DELETE FROM login_limites WHERE clave = $1", f"setup|{ip}"[:255])
@@ -259,4 +263,4 @@ async def cambiar_clave(data: CambioClaveInput, request: Request, response: Resp
 
 @router.get("/me")
 async def me(usuario: dict = Depends(require_usuario)):
-    return {"usuario": usuario["usuario"], "nombre": usuario["nombre"]}
+    return {"usuario": usuario["usuario"], "nombre": usuario["nombre"], "rol": usuario["rol"]}
