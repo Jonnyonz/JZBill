@@ -3,7 +3,7 @@
 Facturador electrónico web para Argentina (ARCA), módulo de **JZTech Suite**. Nombre provisorio.
 Se instala en el servidor del cliente junto a Tracker360, sobre `jztech-core` (FastAPI + PostgreSQL).
 
-**Estado: 0.2.x, razones sociales, roles y accesos.** Todavía no emite comprobantes.
+**Estado: 0.3.x, razones sociales, sucursales, roles y accesos.** Todavía no emite comprobantes.
 
 - [Estructura](#estructura)
 - [Instalación en el servidor](#instalación-en-el-servidor)

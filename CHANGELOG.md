@@ -2,6 +2,22 @@
 
 Cambios de JZBill, del más nuevo al más viejo.
 
+## 2026-10-05 - 0.3.0
+
+### Agregado
+- Sucursales: locales físicos donde pueden facturar varias razones sociales, cada una con su punto de venta
+  predeterminado (un punto de venta está en un solo local). Pantalla de administración.
+- Sucursales asignadas a cada usuario, con una predeterminada.
+- Color por razón social, en orden de paleta (primero rojo, azul y amarillo; después verde, naranja y violeta),
+  editable por el administrador.
+
+### Cambiado
+- Al entrar, cada usuario queda solo en su primera razón social (preferentemente una que facture en su
+  sucursal predeterminada), en modo empresa si lo tiene, con su sucursal y el punto de venta de esa sucursal.
+  Ya no hay que elegir a mano; se cambia desde el avatar.
+- La barra superior toma el color de la razón social elegida; en modo prueba se ve a rayas. Se quitó el aviso
+  de texto del modo prueba.
+
 ## 2026-10-05 - 0.2.0
 
 ### Agregado
