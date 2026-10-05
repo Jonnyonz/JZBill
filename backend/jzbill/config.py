@@ -76,5 +76,21 @@ PASSWORD_MAX_LENGTH = 128
 # certificados ni claves. Se respalda APARTE de la base: con las dos juntas, el respaldo expone los secretos.
 SECRETS_KEY_FILE = os.getenv("SECRETS_KEY_FILE", "").strip()
 
+# Servicios de ARCA. Valores oficiales (manual WSFEv1 v4.7 del 2026-09-01 y pagina del WSAA): modo "prueba" =
+# homologacion, modo "empresa" = produccion. Se pueden cambiar por .env SOLO para apuntar a una ARCA simulada en
+# pruebas; en una instalacion real no se tocan.
+ARCA_URLS = {
+    "prueba": {
+        "wsaa": os.getenv("ARCA_WSAA_URL_PRUEBA", "https://wsaahomo.afip.gov.ar/ws/services/LoginCms"),
+        "wsfe": os.getenv("ARCA_WSFE_URL_PRUEBA", "https://wswhomo.afip.gov.ar/wsfev1/service.asmx"),
+    },
+    "empresa": {
+        "wsaa": os.getenv("ARCA_WSAA_URL_EMPRESA", "https://wsaa.afip.gov.ar/ws/services/LoginCms"),
+        "wsfe": os.getenv("ARCA_WSFE_URL_EMPRESA", "https://servicios1.afip.gov.ar/wsfev1/service.asmx"),
+    },
+}
+# Segundos maximos de espera por cada llamada a ARCA (conexion + respuesta).
+ARCA_TIMEOUT = _entero("ARCA_TIMEOUT", 30)
+
 # Instalacion: "nativa" (install-native.sh) o "desarrollo". La pagina muestra como actualizar segun el caso.
 JZB_INSTALACION = os.getenv("JZB_INSTALACION", "desarrollo").strip().lower()
