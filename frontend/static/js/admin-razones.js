@@ -4,6 +4,8 @@
 
 const CONDICIONES_IVA = { responsable_inscripto: 'Responsable inscripto', monotributo: 'Monotributo', exento: 'Exento' };
 const MAX_PEM = 16000;
+// La ficha abierta la define: refresca la tarjeta de conexion con ARCA cuando cambia un certificado.
+let refrescarArca = () => {};
 
 function selectCondicion(valor) {
     const s = el('select', { name: 'condicion_iva', required: true });
@@ -100,6 +102,7 @@ function detalleRazon(contenedor, rs) {
     certificados(tarjetaCert, rs, 'empresa');
     const tarjetaArca = el('div', { class: 'tarjeta' });
     conexionArca(tarjetaArca, rs, 'prueba');
+    refrescarArca = () => conexionArca(tarjetaArca, rs, tarjetaArca.dataset.modo || 'prueba');
     return [el('div', { class: 'tarjeta' }, el('h2', { class: 'contexto-chip' }, puntoColor(rs.color), rs.nombre_legal), form),
             el('div', { class: 'dos-columnas' }, tarjetaPv, tarjetaCert), tarjetaArca];
 }
@@ -164,7 +167,7 @@ async function certificados(tarjeta, rs, modo) {
         const vence = c.dias_para_vencer < 30 ? 'aviso' : 'ok';
         cuerpo.append(el('tr', {},
             el('td', {}, c.alias || c.sujeto, el('div', { class: 'sub mono' }, c.huella.slice(0, 16))),
-            el('td', {}, fecha(c.valido_hasta), el('div', {}, el('span', { class: 'etiqueta ' + vence }, `${c.dias_para_vencer} días`))),
+            el('td', {}, fecha(c.valido_hasta), el('div', {}, el('span', { class: 'etiqueta ' + vence }, `${c.dias_para_vencer} ${c.dias_para_vencer === 1 ? 'día' : 'días'}`))),
             el('td', {}, c.activo ? el('span', { class: 'etiqueta ok' }, 'En uso') : el('span', { class: 'etiqueta neutra' }, 'Reemplazado'))));
     }
     const form = el('form', {},
@@ -185,7 +188,7 @@ async function certificados(tarjeta, rs, modo) {
             method: 'POST', body: { modo, alias: form.elements.alias.value,
                 certificado_pem: await archivoCert.text(), clave_pem: await archivoClave.text() } }));
         form.reset();
-        if (r) { mostrarMensaje('Certificado cargado.', 'ok'); certificados(tarjeta, rs, modo); }
+        if (r) { mostrarMensaje('Certificado cargado.', 'ok'); certificados(tarjeta, rs, modo); refrescarArca(); }
     });
     tarjeta.append(
         lista.length ? el('div', { class: 'tabla-scroll' }, el('table', {}, el('thead', {}, el('tr', {},
@@ -239,7 +242,7 @@ async function pedidosCertificado(tarjeta, rs, modo) {
             if (!archivo || archivo.size > MAX_PEM) { mostrarMensaje('Elegí el certificado (hasta 16 KB).', 'error'); return; }
             const r = await conBoton(formCert.querySelector('button[type=submit]'), async () => api(`${base}/${encodeURIComponent(p.id)}/certificado`,
                 { method: 'POST', body: { certificado_pem: await archivo.text() } }));
-            if (r) { mostrarMensaje('Certificado cargado y en uso.', 'ok'); certificados(tarjeta, rs, modo); }
+            if (r) { mostrarMensaje('Certificado cargado y en uso.', 'ok'); certificados(tarjeta, rs, modo); refrescarArca(); }
         });
         zona.append(el('div', { class: 'accesos-rs' },
             el('div', {}, el('strong', {}, p.alias), ' ', el('span', { class: 'sub' }, 'pedido del ' + fechaHora(p.creado_en))),
@@ -250,6 +253,7 @@ async function pedidosCertificado(tarjeta, rs, modo) {
 // Conexion con ARCA: estado de los servidores y del ticket, prueba de conexion, desbloqueo y parametros fiscales.
 async function conexionArca(tarjeta, rs, modo) {
     vaciar(tarjeta);
+    tarjeta.dataset.modo = modo;
     const base = `/api/razones-sociales/${encodeURIComponent(rs.id)}/arca`;
     const selector = el('select', { 'aria-label': 'Modo' },
         el('option', { value: 'prueba', selected: modo === 'prueba' }, 'Prueba (homologación)'),
@@ -278,7 +282,8 @@ async function conexionArca(tarjeta, rs, modo) {
         const b = el('button', { type: 'button', class: 'secundario' }, texto);
         b.addEventListener('click', async () => {
             const r = await conBoton(b, () => api(`${base}/${ruta}`, { method: 'POST', body: { modo } }));
-            if (r) { mostrarMensaje(ok(r), 'ok'); conexionArca(tarjeta, rs, modo); }
+            if (r) mostrarMensaje(ok(r), 'ok');
+            conexionArca(tarjeta, rs, modo);
         });
         return b;
     };
