@@ -119,13 +119,21 @@ code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size
 
 /* ===== Panel (estructura de Tracker360: barra de acento, barra lateral de iconos, avatar abajo) ===== */
 body.panel { display: flex; min-height: 100vh; }
-.acento-superior { position: fixed; top: 0; left: 0; right: 0; height: 4px; background: var(--acento); z-index: 50; }
-body.modo-prueba .acento-superior { background: var(--aviso); }
+/* Barra superior: color de la razon social elegida; en modo prueba, la misma barra a rayas diagonales. */
+body.panel { --alto-barra: 6px; }
+.acento-superior { position: fixed; top: 0; left: 0; right: 0; height: var(--alto-barra); z-index: 50;
+                   background: var(--color-rs, var(--acento)); }
+body.modo-prueba .acento-superior {
+    background: repeating-linear-gradient(-45deg, var(--color-rs, var(--acento)) 0 10px, var(--fondo) 10px 18px);
+}
+.punto-color { display: inline-block; width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
+               background: var(--punto, var(--suave)); border: 1px solid var(--borde); vertical-align: middle; }
+input[type="color"] { padding: 2px; height: 40px; width: 64px; }
 
 .lateral {
     width: 64px;
     flex-shrink: 0;
-    margin-top: 4px;
+    margin-top: var(--alto-barra);
     padding: 12px 8px;
     background: var(--tarjeta);
     border-right: 1px solid var(--borde);
@@ -133,8 +141,8 @@ body.modo-prueba .acento-superior { background: var(--aviso); }
     flex-direction: column;
     gap: 4px;
     position: sticky;
-    top: 4px;
-    height: calc(100vh - 4px);
+    top: var(--alto-barra);
+    height: calc(100vh - var(--alto-barra));
     overflow: hidden;
     transition: width 0.2s ease;
     z-index: 20;
@@ -196,7 +204,7 @@ body.modo-prueba .acento-superior { background: var(--aviso); }
 .opcion-rs .acciones button { padding: 5px 10px; font-size: 0.85rem; }
 .opcion-rs.actual { border-color: var(--acento); }
 
-.principal { flex: 1; min-width: 0; margin-top: 4px; }
+.principal { flex: 1; min-width: 0; margin-top: var(--alto-barra); }
 .encabezado {
     display: flex;
     align-items: center;
@@ -252,7 +260,7 @@ label, .tarjeta { min-width: 0; }
 @media (max-width: 760px) {
     body.panel { flex-direction: column; }
     .lateral, .lateral:hover {
-        position: sticky; top: 4px; width: 100%; height: auto; flex-direction: row; padding: 6px; box-shadow: none;
+        position: sticky; top: var(--alto-barra); width: 100%; height: auto; flex-direction: row; padding: 6px; box-shadow: none;
         overflow-x: auto;
     }
     .lateral .marca, .lateral .etiqueta-nav { display: none; }

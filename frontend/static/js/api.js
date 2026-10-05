@@ -48,6 +48,14 @@ function el(etiqueta, atributos = {}, ...hijos) {
     return nodo;
 }
 
+// Punto con el color de una razon social. El color se fija por CSSOM (style.setProperty), que la CSP permite;
+// nunca con un atributo style. Solo se aceptan colores #rrggbb.
+function puntoColor(color) {
+    const punto = el('span', { class: 'punto-color', 'aria-hidden': 'true' });
+    if (/^#[0-9a-f]{6}$/i.test(color || '')) punto.style.setProperty('--punto', color);
+    return punto;
+}
+
 function vaciar(nodo) {
     while (nodo.firstChild) nodo.removeChild(nodo.firstChild);
     return nodo;
