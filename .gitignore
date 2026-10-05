@@ -25,7 +25,7 @@ __pycache__/
 venv/
 .pytest_cache/
 
-# Respaldos que hace jz-factura-actualizar y volcados de la base
+# Respaldos que hace jz-bill-actualizar y volcados de la base
 backups/
 *.dump
 *.sql.gz

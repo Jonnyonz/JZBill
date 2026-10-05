@@ -1,7 +1,7 @@
 """Configuracion de los tests. La configuracion de la app se lee al importarla: estas variables se fijan
-antes de importar jzfactura.
+antes de importar jzbill.
 
-Los tests que usan la base corren solo con JZF_TEST_DB=1 y un PostgreSQL de prueba DESCARTABLE en
+Los tests que usan la base corren solo con JZB_TEST_DB=1 y un PostgreSQL de prueba DESCARTABLE en
 POSTGRES_HOST/POSTGRES_PORT/POSTGRES_DB/POSTGRES_USER/POSTGRES_PASSWORD: cada test borra el esquema
 public entero (por eso POSTGRES_DB tiene que terminar en _test). Ver README, seccion Desarrollo."""
 
@@ -12,17 +12,17 @@ import pytest
 
 os.environ.setdefault("COOKIES_SECURE", "false")   # TestClient habla por http://testserver
 os.environ.setdefault("SETUP_TOKEN", "token-de-prueba-123456")
-os.environ.setdefault("POSTGRES_DB", "jzfactura_test")
-os.environ["JZFACTURA_ENV_FILE"] = os.devnull       # nunca leer el .env de una instalacion
+os.environ.setdefault("POSTGRES_DB", "jzbill_test")
+os.environ["JZBILL_ENV_FILE"] = os.devnull       # nunca leer el .env de una instalacion
 
 SETUP_TOKEN = os.environ["SETUP_TOKEN"]
-CON_BASE = os.getenv("JZF_TEST_DB") == "1"
+CON_BASE = os.getenv("JZB_TEST_DB") == "1"
 
 
 def _resetear_base() -> None:
     import asyncpg
 
-    from jzfactura import config
+    from jzbill import config
 
     if not config.POSTGRES_DB.endswith("_test"):
         raise RuntimeError("Los tests borran la base: POSTGRES_DB tiene que terminar en _test.")
@@ -47,11 +47,11 @@ def nuevo_cliente():
     """Fabrica de clientes HTTP con cookies propias (como dispositivos distintos) contra una base vacia.
     Solo el primero arranca la app (pool y migraciones): los demas usan el mismo pool."""
     if not CON_BASE:
-        pytest.skip("Sin base de prueba (JZF_TEST_DB=1).")
+        pytest.skip("Sin base de prueba (JZB_TEST_DB=1).")
     _resetear_base()
     from fastapi.testclient import TestClient
 
-    from jzfactura.main import app
+    from jzbill.main import app
 
     principal = TestClient(app)
     principal.__enter__()
@@ -76,7 +76,7 @@ def ejecutar_sql():
     """Corre SQL directo en la base de prueba (para preparar casos, por ejemplo desactivar un usuario)."""
     import asyncpg
 
-    from jzfactura import config
+    from jzbill import config
 
     def _ejecutar(sql: str, *args):
         async def _correr():

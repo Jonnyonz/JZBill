@@ -1,5 +1,5 @@
 """Denegar por defecto: toda ruta exige sesion salvo las publicas marcadas a proposito en
-jzfactura.main.RUTAS_PUBLICAS. No necesita base de datos.
+jzbill.main.RUTAS_PUBLICAS. No necesita base de datos.
 
 OJO: desde FastAPI 0.141 los routers incluidos aparecen en app.routes como un solo objeto
 _IncludedRouter, sin `path` ni `dependant`, y jztech_core.deny_by_default 0.1.5 los saltea: el chequeo
@@ -13,8 +13,8 @@ from fastapi import APIRouter, Depends, FastAPI
 import pytest
 from jztech_core.deny_by_default import assert_all_routes_protected
 
-from jzfactura.auth import require_usuario
-from jzfactura.main import RUTAS_PUBLICAS, app
+from jzbill.auth import require_usuario
+from jzbill.main import RUTAS_PUBLICAS, app
 
 # Copia a proposito: agregar una ruta publica obliga a tocar tambien este test (y pensarlo dos veces).
 PUBLICAS_ESPERADAS = {

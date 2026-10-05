@@ -8,9 +8,9 @@ variables de entorno minimas definidas (no necesita base de datos).
   python tools/api_snapshot.py MODULO api-snapshot.json           # genera
   python tools/api_snapshot.py MODULO api-snapshot.json --check   # compara
 
-En JZFactura se corre desde la carpeta backend/.
+En JZBill se corre desde la carpeta backend/.
 
-Ejemplos de MODULO: jzfactura.main (este repo), jzmiddle.main (middleware), backend.main (Tracker360).
+Ejemplos de MODULO: jzbill.main (este repo), jzmiddle.main (middleware), backend.main (Tracker360).
 Sale con codigo 1 si hay diferencias.
 """
 import importlib

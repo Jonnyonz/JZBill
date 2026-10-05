@@ -1,22 +1,22 @@
 #!/bin/bash
 # ==============================================================================
-# Instalador nativo (sin Docker) de JZFactura - ESQUELETO de la Fase 0
+# Instalador nativo (sin Docker) de JZBill - ESQUELETO de la Fase 0
 # ==============================================================================
 # Adaptado de install-native.sh de JZ_Middle_ML-Tracker (mismo patron). Para Debian 12/13 y Ubuntu 24.04
 # (apt, Python 3.11 o mas nuevo). Correr como root desde la raiz del repo clonado o de una version
 # descargada:
 #
-#   sudo JZF_DOMAIN=factura.cliente.com ./install-native.sh
+#   sudo JZB_DOMAIN=factura.cliente.com ./install-native.sh
 #
 # Se instala en el MISMO servidor que el Tracker360 del cliente. Queda asi:
-#   /opt/jzfactura/releases/<version>/   codigo + su propio venv (una carpeta por version)
-#   /opt/jzfactura/current               enlace a la version en uso (el actualizador lo va a cambiar)
-#   /etc/jzfactura/jzfactura.env         configuracion y secretos (root:jzfactura, 0640)
-#   servicio systemd "jzfactura"         uvicorn en 127.0.0.1:8050, un worker
-#   base "jzfactura_db" y rol "jzfactura" propios en el PostgreSQL del servidor
+#   /opt/jzbill/releases/<version>/   codigo + su propio venv (una carpeta por version)
+#   /opt/jzbill/current               enlace a la version en uso (el actualizador lo va a cambiar)
+#   /etc/jzbill/jzbill.env         configuracion y secretos (root:jzbill, 0640)
+#   servicio systemd "jzbill"         uvicorn en 127.0.0.1:8050, un worker
+#   base "jzbill_db" y rol "jzbill" propios en el PostgreSQL del servidor
 #   Caddy delante con HTTPS para el subdominio
 #
-# Pendiente para la Fase 9: actualizador jz-factura-actualizar (respaldo, migracion, chequeo, vuelta atras).
+# Pendiente para la Fase 9: actualizador jz-bill-actualizar (respaldo, migracion, chequeo, vuelta atras).
 #
 # Idempotente: se puede volver a correr. Los secretos ya generados (clave de la base, token de
 # instalacion) no se pisan. Sin compilador: las dependencias se instalan solo con paquetes binarios
@@ -24,34 +24,34 @@
 # esa (instalacion sin internet).
 #
 # Variables opcionales:
-#   JZF_DOMAIN=factura.cliente.com   subdominio (obligatorio la primera vez; despues se reutiliza)
-#   JZF_CADDY=0                      no instalar ni tocar Caddy (si el servidor ya usa otro proxy HTTPS)
-#   JZF_TLS_INTERNAL=1               certificado de la CA local de Caddy (red interna sin dominio publico)
-#   JZF_PORT=8050                    puerto local del servicio
+#   JZB_DOMAIN=factura.cliente.com   subdominio (obligatorio la primera vez; despues se reutiliza)
+#   JZB_CADDY=0                      no instalar ni tocar Caddy (si el servidor ya usa otro proxy HTTPS)
+#   JZB_TLS_INTERNAL=1               certificado de la CA local de Caddy (red interna sin dominio publico)
+#   JZB_PORT=8050                    puerto local del servicio
 # ==============================================================================
 
 set -euo pipefail
 
-APP_NAME="jzfactura"
-APP_USER="jzfactura"
-BASE_DIR="${JZF_DIR:-/opt/jzfactura}"
+APP_NAME="jzbill"
+APP_USER="jzbill"
+BASE_DIR="${JZB_DIR:-/opt/jzbill}"
 RELEASES="$BASE_DIR/releases"
 ENV_DIR="/etc/$APP_NAME"
 ENV_FILE="$ENV_DIR/$APP_NAME.env"
 SERVICE="$APP_NAME"
-DB_NAME="jzfactura_db"
-DB_USER="jzfactura"
-APP_PORT="${JZF_PORT:-8050}"
+DB_NAME="jzbill_db"
+DB_USER="jzbill"
+APP_PORT="${JZB_PORT:-8050}"
 APP_BIND="127.0.0.1"
-CADDY="${JZF_CADDY:-1}"
-TLS_INTERNAL="${JZF_TLS_INTERNAL:-0}"
-DOMAIN="${JZF_DOMAIN:-}"
+CADDY="${JZB_CADDY:-1}"
+TLS_INTERNAL="${JZB_TLS_INTERNAL:-0}"
+DOMAIN="${JZB_DOMAIN:-}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd /   # psql como postgres no puede entrar a la carpeta desde la que se corre (por ejemplo /root)
 
 echo "=================================================="
-echo "Instalador nativo de JZFactura"
+echo "Instalador nativo de JZBill"
 echo "=================================================="
 
 # 1. Privilegios, sistema y ubicacion
@@ -63,18 +63,18 @@ if [ ! -f /etc/debian_version ]; then
   echo "Error: este instalador es para Debian/Ubuntu (apt)." >&2
   exit 1
 fi
-if [ ! -f "$SCRIPT_DIR/backend/jzfactura/__init__.py" ] || [ ! -f "$SCRIPT_DIR/requirements.txt" ]; then
-  echo "Error: correr el script desde la raiz del repo (faltan backend/jzfactura/ o requirements.txt)." >&2
+if [ ! -f "$SCRIPT_DIR/backend/jzbill/__init__.py" ] || [ ! -f "$SCRIPT_DIR/requirements.txt" ]; then
+  echo "Error: correr el script desde la raiz del repo (faltan backend/jzbill/ o requirements.txt)." >&2
   exit 1
 fi
-VERSION="$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' "$SCRIPT_DIR/backend/jzfactura/__init__.py")"
+VERSION="$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' "$SCRIPT_DIR/backend/jzbill/__init__.py")"
 if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  echo "Error: no se pudo leer la version de backend/jzfactura/__init__.py." >&2
+  echo "Error: no se pudo leer la version de backend/jzbill/__init__.py." >&2
   exit 1
 fi
 echo "Version a instalar: $VERSION"
 
-# Subdominio: el de JZF_DOMAIN, el de la instalacion anterior o se pregunta.
+# Subdominio: el de JZB_DOMAIN, el de la instalacion anterior o se pregunta.
 if [ -z "$DOMAIN" ] && [ -f "$ENV_FILE" ]; then
   DOMAIN="$(sed -n 's#^PUBLIC_URL=https\?://##p' "$ENV_FILE" | cut -d/ -f1)"
 fi
@@ -82,7 +82,7 @@ if [ -z "$DOMAIN" ] && [ -t 0 ]; then
   read -r -p "Subdominio del facturador (ej. factura.suempresa.com): " DOMAIN || DOMAIN=""
 fi
 if ! [[ "$DOMAIN" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]]; then
-  echo "Error: falta el subdominio (JZF_DOMAIN=factura.suempresa.com)." >&2
+  echo "Error: falta el subdominio (JZB_DOMAIN=factura.suempresa.com)." >&2
   exit 1
 fi
 
@@ -155,13 +155,13 @@ if [ "$BASE_EXISTE" != "1" ]; then
   sudo -u postgres psql -q -v ON_ERROR_STOP=1 -c "CREATE DATABASE $DB_NAME OWNER $DB_USER;"
 fi
 
-# 6. Configuracion (se reescribe con los mismos secretos; root:jzfactura 0640)
+# 6. Configuracion (se reescribe con los mismos secretos; root:jzbill 0640)
 echo "Escribiendo $ENV_FILE..."
 mkdir -p "$ENV_DIR"
 ADICIONALES=""
 if [ -f "$ENV_FILE" ]; then
   # Lo que el administrador agrego a mano se conserva.
-  ADICIONALES="$(grep -Ev '^(#|$|POSTGRES_|SETUP_TOKEN=|PUBLIC_URL=|TRUSTED_PROXIES=|COOKIES_SECURE=|APP_PORT=|JZF_INSTALACION=|PYTHONDONTWRITEBYTECODE=)' "$ENV_FILE" || true)"
+  ADICIONALES="$(grep -Ev '^(#|$|POSTGRES_|SETUP_TOKEN=|PUBLIC_URL=|TRUSTED_PROXIES=|COOKIES_SECURE=|APP_PORT=|JZB_INSTALACION=|PYTHONDONTWRITEBYTECODE=)' "$ENV_FILE" || true)"
 fi
 TMP_ENV="$(mktemp "$ENV_DIR/.env.XXXXXX")"
 cat > "$TMP_ENV" <<EOF
@@ -177,7 +177,7 @@ PUBLIC_URL=https://$DOMAIN
 TRUSTED_PROXIES=127.0.0.1/32,::1/128
 COOKIES_SECURE=true
 APP_PORT=$APP_PORT
-JZF_INSTALACION=nativa
+JZB_INSTALACION=nativa
 PYTHONDONTWRITEBYTECODE=1
 EOF
 if [ -n "$ADICIONALES" ]; then
@@ -194,7 +194,7 @@ mv -Tf "$BASE_DIR/current.tmp" "$BASE_DIR/current"
 echo "Escribiendo el servicio systemd..."
 cat > "/etc/systemd/system/$SERVICE.service" <<EOF
 [Unit]
-Description=JZFactura (facturacion electronica ARCA)
+Description=JZBill (facturacion electronica ARCA)
 After=network-online.target postgresql.service
 Wants=network-online.target
 
@@ -203,8 +203,8 @@ User=$APP_USER
 Group=$APP_USER
 WorkingDirectory=$BASE_DIR/current
 EnvironmentFile=$ENV_FILE
-Environment=JZFACTURA_ENV_FILE=$ENV_FILE
-ExecStart=$BASE_DIR/current/venv/bin/uvicorn jzfactura.main:app --app-dir $BASE_DIR/current/backend --host $APP_BIND --port $APP_PORT --workers 1 --no-proxy-headers
+Environment=JZBILL_ENV_FILE=$ENV_FILE
+ExecStart=$BASE_DIR/current/venv/bin/uvicorn jzbill.main:app --app-dir $BASE_DIR/current/backend --host $APP_BIND --port $APP_PORT --workers 1 --no-proxy-headers
 Restart=on-failure
 RestartSec=5
 NoNewPrivileges=yes
@@ -282,7 +282,7 @@ if [ "$CADDY" = "1" ]; then
       "# Cada app agrega su propio bloque de dominio abajo." > "$CADDYFILE"
   fi
   if ! grep -q "^$DOMAIN {" "$CADDYFILE"; then
-    printf '\n# jzfactura\n%s\n' "$BLOQUE" >> "$CADDYFILE"
+    printf '\n# jzbill\n%s\n' "$BLOQUE" >> "$CADDYFILE"
   fi
   if caddy validate --config "$CADDYFILE" --adapter caddyfile > /dev/null 2>&1; then
     systemctl enable --now caddy > /dev/null
@@ -299,7 +299,7 @@ fi
 USUARIOS=$(sudo -u postgres psql -d "$DB_NAME" -tAc "SELECT count(*) FROM usuarios" 2>/dev/null || echo 0)
 echo ""
 echo "================================================================="
-echo "INSTALACION COMPLETADA - JZFactura $VERSION"
+echo "INSTALACION COMPLETADA - JZBill $VERSION"
 echo "================================================================="
 echo "Pagina: https://$DOMAIN"
 if [ "$CADDY" != "1" ]; then

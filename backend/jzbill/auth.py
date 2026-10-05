@@ -19,15 +19,15 @@ from jztech_core.passwords import hash_password, needs_rehash, verify_password
 from jztech_core.setup_flow import verify_setup_token
 from pydantic import BaseModel, Field
 
-from jzfactura import config
-from jzfactura.db import ConexionComoPool, get_conn
+from jzbill import config
+from jzbill.db import ConexionComoPool, get_conn
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
 
 CSRF_COOKIE = "csrf_token"
-_CSRF_SUJETO = "jzfactura-csrf"
+_CSRF_SUJETO = "jzbill-csrf"
 
 # Hash de una clave al azar: si el usuario no existe se verifica contra este, para que la respuesta tarde
 # lo mismo y no delate que usuarios existen.
@@ -178,7 +178,7 @@ async def setup_admin(data: SetupInput, request: Request, response: Response,
     hashed = hash_password(data.clave)
     async with conn.transaction():
         # Dos altas simultaneas: la segunda espera y ve la primera.
-        await conn.execute("SELECT pg_advisory_xact_lock(hashtext('jzfactura_setup_admin'))")
+        await conn.execute("SELECT pg_advisory_xact_lock(hashtext('jzbill_setup_admin'))")
         if await conn.fetchval("SELECT COUNT(*) FROM usuarios"):
             raise HTTPException(403, "La configuración inicial ya fue completada.")
         uid = await conn.fetchval("INSERT INTO usuarios (usuario, nombre, clave_hash) VALUES ($1, $2, $3) RETURNING id",

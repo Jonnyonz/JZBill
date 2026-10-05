@@ -1,4 +1,4 @@
-// Llamadas a la API de JZFactura. Las escrituras llevan el token CSRF de la cookie csrf_token.
+// Llamadas a la API de JZBill. Las escrituras llevan el token CSRF de la cookie csrf_token.
 'use strict';
 
 function csrfToken() {

@@ -1,4 +1,4 @@
-# Dependencias DIRECTAS de JZFactura, con version exacta (las mismas del middleware JZ_Middle_ML-Tracker,
+# Dependencias DIRECTAS de JZBill, con version exacta (las mismas del middleware JZ_Middle_ML-Tracker,
 # set comun de la suite JZTech). Lo transitivo lo fija requirements.txt, con hashes.
 # Toda dependencia nueva se justifica en DEPENDENCIAS.md (que resuelve, por que no alcanza la
 # biblioteca estandar, que tenga wheel precompilada para Linux x86_64).

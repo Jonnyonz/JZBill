@@ -9,7 +9,7 @@ import asyncpg
 from fastapi import HTTPException
 from jztech_core.migrations import apply_migrations
 
-from jzfactura import config
+from jzbill import config
 
 logger = logging.getLogger(__name__)
 

@@ -1,4 +1,4 @@
--- Esquema base de JZFactura (Fase 0): usuarios, sesiones, limite de login y auditoria.
+-- Esquema base de JZBill (Fase 0): usuarios, sesiones, limite de login y auditoria.
 -- Razones sociales, puntos de venta, roles y accesos van en la Fase 1 (docs/02_PLAN_DE_TRABAJO.md).
 -- Fechas en UTC (timestamptz).
 

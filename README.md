@@ -1,4 +1,4 @@
-# JZFactura
+# JZBill
 
 Facturador electrónico web para Argentina (ARCA), módulo de **JZTech Suite**. Nombre provisorio.
 Se instala en el servidor del cliente junto a Tracker360, sobre `jztech-core` (FastAPI + PostgreSQL).
@@ -16,7 +16,7 @@ Se instala en el servidor del cliente junto a Tracker360, sobre `jztech-core` (F
 
 | Carpeta / archivo | Contenido |
 |---|---|
-| `backend/` | Aplicación FastAPI (`jzfactura/`), tests (`tests/`), herramientas (`tools/`) y contrato de la API (`api-snapshot.json`) |
+| `backend/` | Aplicación FastAPI (`jzbill/`), tests (`tests/`), herramientas (`tools/`) y contrato de la API (`api-snapshot.json`) |
 | `db/` | Migraciones SQL versionadas (`NNNN_descripcion.sql`), se aplican solas al arrancar |
 | `frontend/` | Páginas HTML, CSS y JS sin dependencias externas (CSP estricta: nada inline) |
 | `install-native.sh` | Instalador nativo para Debian/Ubuntu |
@@ -29,11 +29,11 @@ Se instala en el servidor del cliente junto a Tracker360, sobre `jztech-core` (F
 Debian 12/13 o Ubuntu 24.04, sin Docker y sin compilador:
 
 ```bash
-sudo JZF_DOMAIN=factura.suempresa.com ./install-native.sh
+sudo JZB_DOMAIN=factura.suempresa.com ./install-native.sh
 ```
 
-Deja el servicio systemd `jzfactura` en `127.0.0.1:8050`, la base `jzfactura_db` con su rol propio,
-la configuración en `/etc/jzfactura/jzfactura.env` y Caddy con HTTPS delante. Al terminar muestra el
+Deja el servicio systemd `jzbill` en `127.0.0.1:8050`, la base `jzbill_db` con su rol propio,
+la configuración en `/etc/jzbill/jzbill.env` y Caddy con HTTPS delante. Al terminar muestra el
 token de configuración inicial, que la página pide una sola vez para crear el administrador.
 
 ## Desarrollo
@@ -48,15 +48,15 @@ python3 -m venv .venv
 Para correr la app en la máquina local, copiar `.env.example` a `.env` (nunca se versiona) y:
 
 ```bash
-.venv/bin/uvicorn jzfactura.main:app --app-dir backend --port 8050
+.venv/bin/uvicorn jzbill.main:app --app-dir backend --port 8050
 ```
 
 Tests, desde la raíz. El de deny-by-default no necesita base; los de autenticación usan un PostgreSQL
 **descartable** (cada test borra el esquema; el nombre de la base tiene que terminar en `_test`):
 
 ```bash
-docker run -d --name jzf-pg -p 5433:5432 -e POSTGRES_USER=jzfactura -e POSTGRES_PASSWORD=prueba -e POSTGRES_DB=jzfactura_test postgres:15-alpine
-JZF_TEST_DB=1 POSTGRES_PORT=5433 POSTGRES_PASSWORD=prueba .venv/bin/python -m pytest
+docker run -d --name jzb-pg -p 5433:5432 -e POSTGRES_USER=jzbill -e POSTGRES_PASSWORD=prueba -e POSTGRES_DB=jzbill_test postgres:15-alpine
+JZB_TEST_DB=1 POSTGRES_PORT=5433 POSTGRES_PASSWORD=prueba .venv/bin/python -m pytest
 ```
 
 Auditoría de dependencias:
@@ -74,7 +74,7 @@ con Python 3.11).
 cambio, desde `backend/`:
 
 ```bash
-python tools/api_snapshot.py jzfactura.main api-snapshot.json --check
+python tools/api_snapshot.py jzbill.main api-snapshot.json --check
 ```
 
 Si el contrato cambió a propósito, se regenera sin `--check` y el cambio se revisa en el commit.
@@ -82,7 +82,7 @@ Si el contrato cambió a propósito, se regenera sin `--check` y el cambio se re
 ## Versiones
 
 [Versionado semántico](https://semver.org/lang/es/) `MAYOR.MENOR.PARCHE`. La versión vive en un solo lugar,
-`backend/jzfactura/__init__.py`, y la leen el instalador, `/api/health` y el futuro actualizador.
+`backend/jzbill/__init__.py`, y la leen el instalador, `/api/health` y el futuro actualizador.
 
 - Mientras sea `0.x`: cada etapa del plan cerrada y aceptada sube MENOR (`0.1.0`, `0.2.0`, ...). Los arreglos
   y los cambios chicos dentro de una etapa suben PARCHE.

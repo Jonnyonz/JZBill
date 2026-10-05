@@ -1,6 +1,6 @@
 # Notas de los parches
 
-Cambios de JZFactura, del más nuevo al más viejo.
+Cambios de JZBill, del más nuevo al más viejo.
 
 ## 2026-10-05 - 0.0.1 (Fase 0, sin publicar)
 
@@ -16,3 +16,7 @@ Cambios de JZFactura, del más nuevo al más viejo.
 - Test que recorre todas las rutas y verifica que exigen sesión salvo las públicas marcadas.
 - Instalador nativo (esqueleto) para Debian 12/13 y Ubuntu 24.04 con systemd y Caddy.
 - `backend/tools/api_snapshot.py` y `backend/api-snapshot.json`.
+
+### Cambiado
+- El proyecto se llama JZBill (antes JZFactura): paquete `jzbill`, servicio `jzbill`, base `jzbill_db`,
+  carpetas `/opt/jzbill` y `/etc/jzbill`, variables `JZB_*` y `JZBILL_ENV_FILE`.

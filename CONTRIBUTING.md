@@ -1,4 +1,4 @@
-# Contribuir a JZFactura
+# Contribuir a JZBill
 
 Gracias por el interés. Este proyecto es parte de JZTech Suite y se distribuye bajo
 **AGPLv3** (ver `LICENSE`): tu contribución se publica bajo los mismos términos.

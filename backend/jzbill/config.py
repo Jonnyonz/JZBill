@@ -22,7 +22,7 @@ def _cargar_env(ruta: Path) -> None:
         os.environ.setdefault(clave.strip(), valor.strip().strip('"').strip("'"))
 
 
-_cargar_env(Path(os.getenv("JZFACTURA_ENV_FILE", Path(__file__).resolve().parents[2] / ".env")))
+_cargar_env(Path(os.getenv("JZBILL_ENV_FILE", Path(__file__).resolve().parents[2] / ".env")))
 
 
 def _entero(nombre: str, defecto: int, minimo: int = 1) -> int:
@@ -40,8 +40,8 @@ def _entero(nombre: str, defecto: int, minimo: int = 1) -> int:
 
 POSTGRES_HOST = os.getenv("POSTGRES_HOST", "127.0.0.1")
 POSTGRES_PORT = _entero("POSTGRES_PORT", 5432)
-POSTGRES_DB = os.getenv("POSTGRES_DB", "jzfactura_db")
-POSTGRES_USER = os.getenv("POSTGRES_USER", "jzfactura")
+POSTGRES_DB = os.getenv("POSTGRES_DB", "jzbill_db")
+POSTGRES_USER = os.getenv("POSTGRES_USER", "jzbill")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "")
 DB_POOL_MAX = _entero("DB_POOL_MAX", 5)
 
@@ -72,4 +72,4 @@ PASSWORD_MIN_LENGTH = _entero("PASSWORD_MIN_LENGTH", 10, minimo=8)
 PASSWORD_MAX_LENGTH = 128
 
 # Instalacion: "nativa" (install-native.sh) o "desarrollo". La pagina muestra como actualizar segun el caso.
-JZF_INSTALACION = os.getenv("JZF_INSTALACION", "desarrollo").strip().lower()
+JZB_INSTALACION = os.getenv("JZB_INSTALACION", "desarrollo").strip().lower()

@@ -1,4 +1,4 @@
-# JZFactura - Dependencias y su justificación
+# JZBill - Dependencias y su justificación
 
 Regla (CLAUDE.md): cada dependencia nueva se justifica por escrito: qué resuelve, por qué no alcanza la
 biblioteca estándar y que exista como wheel precompilada (en el servidor no hay compilador).

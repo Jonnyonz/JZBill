@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from jztech_core.security_headers import SecurityHeadersMiddleware
 
-from jzfactura import __version__, auth, db
+from jzbill import __version__, auth, db
 
 logger = logging.getLogger(__name__)
 
@@ -45,15 +45,15 @@ RUTAS_PUBLICAS = [
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await db.iniciar()
-    logger.info(f"JZFactura {__version__} iniciado.")
+    logger.info(f"JZBill {__version__} iniciado.")
     yield
     await db.cerrar()
 
 
 # Sin documentacion interactiva publica: el mapa de la API no se expone.
-app = FastAPI(title="JZFactura", version=__version__, lifespan=lifespan,
+app = FastAPI(title="JZBill", version=__version__, lifespan=lifespan,
               docs_url=None, redoc_url=None, openapi_url=None)
-install_generic_error_handler(app, "jzfactura", field="detail")
+install_generic_error_handler(app, "jzbill", field="detail")
 app.add_middleware(SecurityHeadersMiddleware, csp=CSP, permissions_policy="geolocation=(), microphone=(), camera=()")
 
 app.include_router(auth.router)
