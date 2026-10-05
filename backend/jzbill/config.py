@@ -92,5 +92,5 @@ ARCA_URLS = {
 # Segundos maximos de espera por cada llamada a ARCA (conexion + respuesta).
 ARCA_TIMEOUT = _entero("ARCA_TIMEOUT", 30)
 
-# Instalacion: "nativa" (install-native.sh) o "desarrollo". La pagina muestra como actualizar segun el caso.
+# Instalacion: "nativa" (install-native.sh), "docker" (install-docker.sh) o "desarrollo". La pagina muestra como actualizar segun el caso.
 JZB_INSTALACION = os.getenv("JZB_INSTALACION", "desarrollo").strip().lower()

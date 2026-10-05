@@ -20,6 +20,7 @@ Se instala en el servidor del cliente junto a Tracker360, sobre `jztech-core` (F
 | `db/` | Migraciones SQL versionadas (`NNNN_descripcion.sql`), se aplican solas al arrancar |
 | `frontend/` | Páginas HTML, CSS y JS sin dependencias externas (CSP estricta: nada inline) |
 | `install-native.sh` | Instalador nativo para Debian/Ubuntu |
+| `install-docker.sh`, `compose.yaml`, `Dockerfile` | Instalación alternativa con Docker (app, PostgreSQL y Caddy) |
 | `requirements*.in` / `.txt` | Dependencias con versión exacta y lockfiles con hashes |
 | `DEPENDENCIAS.md` | Justificación de cada dependencia |
 | `.env.example` | Todas las variables de configuración, con valores de ejemplo |
@@ -54,6 +55,24 @@ la que se cifran los certificados y claves de ARCA. Se respalda **aparte** del r
 los certificados guardados no se recuperan; con las dos juntas, quedan expuestos. Nunca se pisa al reinstalar.
 
 Probado en Debian 13 con Tracker360 nativo en el mismo servidor.
+
+### Alternativa con Docker
+
+Para quien ya usa Docker (por ejemplo, un facturador personal). En equipos con pocos recursos conviene la
+nativa: Docker suma consumo de memoria. Hace falta Linux con Docker Engine y `docker compose` v2:
+
+```bash
+sudo ./install-docker.sh
+```
+
+Levanta tres contenedores: la app (usuario sin privilegios, sistema de archivos de solo lectura), PostgreSQL
+en una red interna sin salida a internet y Caddy con HTTPS por la CA local, en `https://<ip del equipo>:8443`.
+Solo Caddy publica un puerto. La configuración, la clave maestra y el certificado de la CA (`ca-local.crt`,
+para instalar en cada terminal) quedan en `/etc/jzbill-docker/`; la base, en el volumen `jzbill_db`. Variables
+opcionales: `JZB_DOMAIN` (nombre de la red interna), `JZB_HTTPS_PORT`, `JZB_BIND=127.0.0.1` (solo desde ese
+equipo). Docker publica el puerto por encima del firewall del sistema: si el equipo está expuesto a internet,
+usar `JZB_BIND`. Para actualizar, bajar la versión nueva y volver a correrlo. La regla de la clave maestra es la
+misma: respaldarla aparte y nunca perderla.
 
 ## Desarrollo
 

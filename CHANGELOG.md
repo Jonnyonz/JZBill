@@ -2,6 +2,13 @@
 
 Cambios de JZBill, del más nuevo al más viejo.
 
+## Sin publicar
+
+### Agregado
+- Instalación alternativa con Docker (`install-docker.sh`, `compose.yaml`, `Dockerfile`): app, PostgreSQL y
+  Caddy con HTTPS. La app corre sin privilegios y con sistema de archivos de solo lectura, la base en una red
+  sin salida a internet, y la imagen lleva solo el código (lista blanca en `.dockerignore`).
+
 ## 2026-10-05 - 0.3.0
 
 ### Agregado
