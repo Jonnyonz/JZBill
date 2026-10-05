@@ -3,7 +3,7 @@
 Facturador electrónico web para Argentina (ARCA), módulo de **JZTech Suite**. Nombre provisorio.
 Se instala en el servidor del cliente junto a Tracker360, sobre `jztech-core` (FastAPI + PostgreSQL).
 
-**Estado: 0.1.x, base segura (usuarios y sesiones).** Todavía no emite comprobantes.
+**Estado: 0.2.x, razones sociales, roles y accesos.** Todavía no emite comprobantes.
 
 - [Estructura](#estructura)
 - [Instalación en el servidor](#instalación-en-el-servidor)
@@ -48,6 +48,10 @@ El Caddyfile se comparte con las otras apps de JZTech: el instalador solo agrega
 lo deja como estaba. Por IP el certificado lo emite la CA local de Caddy (la misma de Tracker360): cada
 terminal tiene que confiar en esa CA una sola vez. Se puede volver a correr para actualizar la
 instalación: las claves generadas no se pisan.
+
+**Clave maestra de los secretos.** El instalador genera `/etc/jzbill/clave-secretos` (root:jzbill 0640), con
+la que se cifran los certificados y claves de ARCA. Se respalda **aparte** del respaldo de la base: sin ella
+los certificados guardados no se recuperan; con las dos juntas, quedan expuestos. Nunca se pisa al reinstalar.
 
 Probado en Debian 13 con Tracker360 nativo en el mismo servidor.
 

@@ -2,6 +2,22 @@
 
 Cambios de JZBill, del más nuevo al más viejo.
 
+## 2026-10-05 - 0.2.0
+
+### Agregado
+- Razones sociales (CUIT validado con dígito verificador y fijo después del alta, condición frente al IVA,
+  domicilio, régimen especial de ARBA) y sus puntos de venta.
+- Roles globales (administrador, supervisor, cajero, solo lectura) y accesos por usuario a razones sociales,
+  modo (empresa o prueba) y, opcionalmente, puntos de venta. Una razón social sin acceso responde igual que
+  una que no existe, también pedida por ID. Siempre queda al menos un administrador activo; resetear la
+  contraseña o desactivar a un usuario cierra sus sesiones.
+- Selector "división empresa" bajo el avatar: razón social y modo por sesión, revalidado en cada pedido. El
+  modo prueba se distingue por el color de la barra superior.
+- Certificados de ARCA por razón social y modo, cifrados en reposo con AES-256-GCM (dependencia
+  `cryptography`) y una clave maestra fuera de la base que genera el instalador. La API nunca los devuelve.
+- Auditoría por razón social, inmutable en la base, con pantalla de consulta.
+- Pantallas de administración de razones sociales, puntos de venta, certificados, usuarios y accesos.
+
 ## 2026-10-05 - 0.1.0
 
 ### Agregado
