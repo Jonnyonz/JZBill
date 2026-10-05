@@ -71,5 +71,10 @@ SESSION_HOURS = _entero("SESSION_HOURS", 8)
 PASSWORD_MIN_LENGTH = _entero("PASSWORD_MIN_LENGTH", 10, minimo=8)
 PASSWORD_MAX_LENGTH = 128
 
+# Clave maestra para cifrar secretos en reposo (32 bytes en base64, una linea). La genera el instalador en
+# /etc/jzbill/clave-secretos (root:jzbill 0640). Sin ella la app arranca, pero no puede guardar ni leer
+# certificados ni claves. Se respalda APARTE de la base: con las dos juntas, el respaldo expone los secretos.
+SECRETS_KEY_FILE = os.getenv("SECRETS_KEY_FILE", "").strip()
+
 # Instalacion: "nativa" (install-native.sh) o "desarrollo". La pagina muestra como actualizar segun el caso.
 JZB_INSTALACION = os.getenv("JZB_INSTALACION", "desarrollo").strip().lower()

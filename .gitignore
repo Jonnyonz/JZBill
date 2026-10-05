@@ -4,6 +4,7 @@
 .env.*
 !.env.example
 secrets/
+clave-secretos*
 # Certificados y claves (ARCA/WSAA, TLS, SMTP)
 *.pem
 *.key

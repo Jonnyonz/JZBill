@@ -203,13 +203,34 @@ sudo -u postgres psql -q -v ON_ERROR_STOP=1 \
   -c "REVOKE CONNECT, TEMPORARY ON DATABASE $DB_NAME FROM PUBLIC;" \
   -c "GRANT CONNECT, TEMPORARY ON DATABASE $DB_NAME TO $DB_USER;"
 
-# 6. Configuracion (se reescribe con los mismos secretos; root:jzbill 0640)
-echo "Escribiendo $ENV_FILE..."
+# 6. Clave maestra de los secretos cifrados (certificados de ARCA, claves). Se genera UNA vez y nunca se pisa:
+#    si se pierde, los secretos guardados no se pueden recuperar (hay que volver a cargarlos).
 mkdir -p "$ENV_DIR"
+CLAVE_SECRETOS="$ENV_DIR/clave-secretos"
+if [ ! -f "$CLAVE_SECRETOS" ]; then
+  HAY_SECRETOS=0
+  if [ "$(sudo -u postgres psql -d "$DB_NAME" -tAc "SELECT to_regclass('public.certificados') IS NOT NULL")" = "t" ] \
+      && [ "$(sudo -u postgres psql -d "$DB_NAME" -tAc "SELECT EXISTS (SELECT 1 FROM certificados)")" = "t" ]; then
+    HAY_SECRETOS=1
+  fi
+  if [ "$HAY_SECRETOS" = "1" ]; then
+    echo "Error: falta $CLAVE_SECRETOS pero la base tiene certificados cifrados con ella." >&2
+    echo "Restaurar la clave desde su respaldo. Una clave nueva dejaria esos certificados inutilizables." >&2
+    exit 1
+  fi
+  echo "Generando la clave maestra de secretos..."
+  (umask 077 && head -c 32 /dev/urandom | base64 -w0 > "$CLAVE_SECRETOS.tmp" && echo >> "$CLAVE_SECRETOS.tmp")
+  mv -f "$CLAVE_SECRETOS.tmp" "$CLAVE_SECRETOS"
+fi
+chown root:"$APP_USER" "$CLAVE_SECRETOS"
+chmod 640 "$CLAVE_SECRETOS"
+
+# 7. Configuracion (se reescribe con los mismos secretos; root:jzbill 0640)
+echo "Escribiendo $ENV_FILE..."
 ADICIONALES=""
 if [ -f "$ENV_FILE" ]; then
   # Lo que el administrador agrego a mano se conserva.
-  ADICIONALES="$(grep -Ev '^(#|$|POSTGRES_|SETUP_TOKEN=|PUBLIC_URL=|TRUSTED_PROXIES=|COOKIES_SECURE=|APP_PORT=|JZB_(INSTALACION|DOMAIN|IP|HTTPS_PORT)=|PYTHONDONTWRITEBYTECODE=)' "$ENV_FILE" || true)"
+  ADICIONALES="$(grep -Ev '^(#|$|POSTGRES_|SETUP_TOKEN=|SECRETS_KEY_FILE=|PUBLIC_URL=|TRUSTED_PROXIES=|COOKIES_SECURE=|APP_PORT=|JZB_(INSTALACION|DOMAIN|IP|HTTPS_PORT)=|PYTHONDONTWRITEBYTECODE=)' "$ENV_FILE" || true)"
 fi
 TMP_ENV="$(mktemp "$ENV_DIR/.env.XXXXXX")"
 cat > "$TMP_ENV" <<EOF
@@ -229,6 +250,7 @@ JZB_INSTALACION=nativa
 JZB_DOMAIN=$DOMAIN
 JZB_IP=$IP
 JZB_HTTPS_PORT=$HTTPS_PORT
+SECRETS_KEY_FILE=$CLAVE_SECRETOS
 PYTHONDONTWRITEBYTECODE=1
 EOF
 if [ -n "$ADICIONALES" ]; then
@@ -238,7 +260,7 @@ chown root:"$APP_USER" "$TMP_ENV"
 chmod 640 "$TMP_ENV"
 mv -f "$TMP_ENV" "$ENV_FILE"
 
-# 7. Version en uso y servicio systemd
+# 8. Version en uso y servicio systemd
 ln -sfn "$DEST" "$BASE_DIR/current.tmp"
 mv -Tf "$BASE_DIR/current.tmp" "$BASE_DIR/current"
 
@@ -299,7 +321,7 @@ if [ "$OK" != "1" ]; then
 fi
 echo "Servicio en marcha (version $VERSION)."
 
-# 8. Proxy HTTPS (Caddy), compartido con las otras apps de JZTech del servidor.
+# 9. Proxy HTTPS (Caddy), compartido con las otras apps de JZTech del servidor.
 if [ -z "$DOMAIN" ] || [ "$TLS_INTERNAL" = "1" ]; then
   TLS_LINEA="tls internal"
 else
@@ -395,7 +417,7 @@ if [ "$CADDY" = "1" ]; then
   if [ -n "$RESPALDO_CADDY" ]; then rm -f "$RESPALDO_CADDY"; fi
 fi
 
-# 9. Resumen
+# 10. Resumen
 USUARIOS=$(sudo -u postgres psql -d "$DB_NAME" -tAc "SELECT count(*) FROM usuarios" 2>/dev/null || echo 0)
 echo ""
 echo "================================================================="
@@ -413,4 +435,7 @@ if [ "$USUARIOS" = "0" ]; then
   echo "Token de configuracion inicial: $SETUP_TOKEN"
   echo "La pagina lo pide para crear el administrador (sirve una sola vez)."
 fi
+echo ""
+echo "IMPORTANTE: respaldar $CLAVE_SECRETOS APARTE del respaldo de la base."
+echo "Sin esa clave los certificados guardados no se pueden recuperar; con las dos juntas, quedan expuestos."
 echo "================================================================="
