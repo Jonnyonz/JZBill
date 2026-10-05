@@ -18,5 +18,8 @@ Cambios de JZBill, del más nuevo al más viejo.
 - `backend/tools/api_snapshot.py` y `backend/api-snapshot.json`.
 
 ### Cambiado
+- Instalador nativo probado en Debian 13 junto a Tracker360 nativo: acceso por IP (HTTPS en el 8443 con la
+  CA local de Caddy) o por dominio, puerto HTTPS configurable, el Caddyfile compartido nunca se pisa ni queda
+  roto, HSTS y sin cabecera `Server`, y solo el rol `jzbill` puede conectarse a `jzbill_db`.
 - El proyecto se llama JZBill (antes JZFactura): paquete `jzbill`, servicio `jzbill`, base `jzbill_db`,
   carpetas `/opt/jzbill` y `/etc/jzbill`, variables `JZB_*` y `JZBILL_ENV_FILE`.

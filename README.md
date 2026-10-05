@@ -26,15 +26,30 @@ Se instala en el servidor del cliente junto a Tracker360, sobre `jztech-core` (F
 
 ## Instalación en el servidor
 
-Debian 12/13 o Ubuntu 24.04, sin Docker y sin compilador:
+Debian 12/13 o Ubuntu 24.04, sin Docker y sin compilador. Por IP (red del local), queda en
+`https://<ip del servidor>:8443`, porque el 443 de la IP lo usa Tracker360:
+
+```bash
+sudo ./install-native.sh
+```
+
+Con dominio propio, queda en `https://factura.suempresa.com`:
 
 ```bash
 sudo JZB_DOMAIN=factura.suempresa.com ./install-native.sh
 ```
 
-Deja el servicio systemd `jzbill` en `127.0.0.1:8050`, la base `jzbill_db` con su rol propio,
-la configuración en `/etc/jzbill/jzbill.env` y Caddy con HTTPS delante. Al terminar muestra el
-token de configuración inicial, que la página pide una sola vez para crear el administrador.
+Deja el servicio systemd `jzbill` en `127.0.0.1:8050`, la base `jzbill_db` con su rol propio (solo ese
+rol puede conectarse), la configuración en `/etc/jzbill/jzbill.env` y Caddy con HTTPS delante. Al terminar
+muestra el token de configuración inicial, que la página pide una sola vez para crear el administrador.
+
+El Caddyfile se comparte con las otras apps de JZTech: el instalador solo agrega o actualiza el bloque
+`# jzbill`, no modifica un Caddyfile que no haya armado un instalador de JZTech y, si el resultado no valida,
+lo deja como estaba. Por IP el certificado lo emite la CA local de Caddy (la misma de Tracker360): cada
+terminal tiene que confiar en esa CA una sola vez. Se puede volver a correr para actualizar la
+instalación: las claves generadas no se pisan.
+
+Probado en Debian 13 con Tracker360 nativo en el mismo servidor.
 
 ## Desarrollo
 
