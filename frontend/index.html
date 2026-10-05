@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>JZFactura</title>
+    <link rel="stylesheet" href="/static/css/app.css?v=0.0.1">
+</head>
+<body class="centrado">
+    <main class="tarjeta tarjeta-chica">
+        <header class="marca">
+            <svg class="icono-marca" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l3 3v15l-2-1.2-2 1.2-2-1.2-2 1.2-2-1.2-2 1.2V3zM9 9h6M9 13h6M9 17h3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <div>
+                <h1>JZFactura</h1>
+                <p class="sub">Facturación electrónica</p>
+            </div>
+        </header>
+
+        <form id="form-login" class="oculto" autocomplete="on">
+            <label>Usuario <input id="login-usuario" name="username" required maxlength="50" autocomplete="username"></label>
+            <label>Contraseña <input id="login-clave" name="password" type="password" required maxlength="128" autocomplete="current-password"></label>
+            <button type="submit">Ingresar</button>
+        </form>
+
+        <form id="form-setup" class="oculto" autocomplete="off">
+            <p class="ayuda">Configuración inicial: creá el usuario administrador. El token de instalación lo generó el instalador (está en el archivo de configuración del servidor).</p>
+            <label>Token de instalación <input id="setup-token" required maxlength="200"></label>
+            <label>Usuario <input id="setup-usuario" required maxlength="50" autocomplete="username"></label>
+            <label>Nombre <input id="setup-nombre" maxlength="120" autocomplete="name"></label>
+            <label>Contraseña (mínimo 10 caracteres) <input id="setup-clave" type="password" required minlength="10" maxlength="128" autocomplete="new-password"></label>
+            <button type="submit">Crear administrador</button>
+        </form>
+
+        <p id="mensaje" class="mensaje" role="alert"></p>
+    </main>
+    <script src="/static/js/api.js?v=0.0.1"></script>
+    <script src="/static/js/index.js?v=0.0.1"></script>
+</body>
+</html>

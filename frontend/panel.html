@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>JZFactura</title>
+    <link rel="stylesheet" href="/static/css/app.css?v=0.0.1">
+</head>
+<body>
+    <header class="barra">
+        <div class="marca">
+            <svg class="icono-marca" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l3 3v15l-2-1.2-2 1.2-2-1.2-2 1.2-2-1.2-2 1.2V3zM9 9h6M9 13h6M9 17h3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <h1>JZFactura</h1>
+        </div>
+        <div class="barra-derecha">
+            <span id="usuario" class="usuario"></span>
+            <button id="salir" class="secundario" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Salir
+            </button>
+        </div>
+    </header>
+
+    <main class="contenido">
+        <section class="tarjeta">
+            <h2>Cambiar contraseña</h2>
+            <p class="ayuda">Al cambiarla se cierran las sesiones abiertas en los demás dispositivos.</p>
+            <form id="form-clave" autocomplete="off">
+                <label>Contraseña actual <input id="clave-actual" type="password" required maxlength="128" autocomplete="current-password"></label>
+                <label>Contraseña nueva (mínimo 10 caracteres) <input id="clave-nueva" type="password" required minlength="10" maxlength="128" autocomplete="new-password"></label>
+                <label>Repetir la contraseña nueva <input id="clave-repetida" type="password" required minlength="10" maxlength="128" autocomplete="new-password"></label>
+                <div class="acciones"><button type="submit">Cambiar contraseña</button></div>
+            </form>
+        </section>
+
+        <section class="tarjeta">
+            <h2>Sesiones</h2>
+            <p class="ayuda">Cierra la sesión en todos los dispositivos, incluido este.</p>
+            <div class="acciones"><button id="cerrar-todas" class="secundario" type="button">Cerrar todas las sesiones</button></div>
+        </section>
+    </main>
+
+    <p id="mensaje" class="mensaje mensaje-flotante" role="alert"></p>
+    <script src="/static/js/api.js?v=0.0.1"></script>
+    <script src="/static/js/panel.js?v=0.0.1"></script>
+</body>
+</html>
