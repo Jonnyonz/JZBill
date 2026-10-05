@@ -98,8 +98,10 @@ function detalleRazon(contenedor, rs) {
     const tarjetaCert = el('div', { class: 'tarjeta' });
     puntosVenta(tarjetaPv, rs);
     certificados(tarjetaCert, rs, 'empresa');
+    const tarjetaArca = el('div', { class: 'tarjeta' });
+    conexionArca(tarjetaArca, rs, 'prueba');
     return [el('div', { class: 'tarjeta' }, el('h2', { class: 'contexto-chip' }, puntoColor(rs.color), rs.nombre_legal), form),
-            el('div', { class: 'dos-columnas' }, tarjetaPv, tarjetaCert)];
+            el('div', { class: 'dos-columnas' }, tarjetaPv, tarjetaCert), tarjetaArca];
 }
 
 async function puntosVenta(tarjeta, rs) {
@@ -190,4 +192,98 @@ async function certificados(tarjeta, rs, modo) {
             el('th', {}, 'Certificado'), el('th', {}, 'Vence'), el('th', {}, 'Estado'))), cuerpo))
             : el('p', { class: 'ayuda' }, `Sin certificado para el modo ${modo}.`),
         form);
+    await pedidosCertificado(tarjeta, rs, modo);
+}
+
+// Pedido de certificado (CSR) generado en el servidor: la clave privada queda cifrada ahi y nunca sale.
+// El CSR se pega en WSASS (homologacion) o en el Administrador de Certificados Digitales (produccion) y despues
+// se carga el certificado que devuelve ARCA contra el pedido.
+async function pedidosCertificado(tarjeta, rs, modo) {
+    const base = `/api/razones-sociales/${encodeURIComponent(rs.id)}/certificados/pedidos`;
+    const zona = el('div', {});
+    tarjeta.append(el('h3', {}, 'Pedir un certificado nuevo a ARCA'),
+        el('p', { class: 'ayuda' }, modo === 'prueba'
+            ? 'Generá el pedido, copiá el CSR y pegalo en WSASS (homologación, con tu clave fiscal). Asociá el certificado al servicio wsfe y cargá acá el certificado que te devuelve.'
+            : 'Generá el pedido, copiá el CSR y pegalo en el Administrador de Certificados Digitales de ARCA. Después asociá el certificado al servicio de factura electrónica y cargá acá el certificado.'),
+        zona);
+    const formPedido = el('form', {},
+        el('div', { class: 'grilla-form' },
+            el('label', {}, 'Alias (nombre del certificado en ARCA)', el('input', { name: 'alias', required: true, maxlength: 50, pattern: '[A-Za-z0-9][A-Za-z0-9_-]*', placeholder: 'jzbill' }))),
+        el('div', { class: 'acciones' }, el('button', { type: 'submit' }, 'Generar pedido (CSR)')));
+    formPedido.addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        const r = await conBoton(formPedido.querySelector('button'), () => api(base, { method: 'POST', body: { modo, alias: formPedido.elements.alias.value } }));
+        if (r) { mostrarMensaje('Pedido generado. Copiá el CSR.', 'ok'); certificados(tarjeta, rs, modo); }
+    });
+    zona.append(formPedido);
+    let pedidos = [];
+    try {
+        pedidos = (await api(`${base}?modo=${encodeURIComponent(modo)}`)).filter(p => !p.usado_en);
+    } catch (e) {
+        mostrarMensaje(e.message, 'error');
+    }
+    for (const p of pedidos) {
+        const detalle = await api(`${base}/${encodeURIComponent(p.id)}`);
+        const csr = el('textarea', { readonly: true, 'aria-label': 'CSR' }, detalle.csr_pem);
+        const copiar = el('button', { type: 'button', class: 'secundario' }, 'Copiar CSR');
+        copiar.addEventListener('click', async () => {
+            try { await navigator.clipboard.writeText(detalle.csr_pem); mostrarMensaje('CSR copiado.', 'ok'); }
+            catch (e) { csr.select(); mostrarMensaje('Seleccioná el texto y copialo.', 'error'); }
+        });
+        const formCert = el('form', {},
+            el('label', {}, 'Certificado que devolvió ARCA (.crt / .pem)', el('input', { name: 'certificado', type: 'file', accept: '.crt,.pem,.cer', required: true })),
+            el('div', { class: 'acciones' }, copiar, el('button', { type: 'submit' }, 'Cargar certificado')));
+        formCert.addEventListener('submit', async (ev) => {
+            ev.preventDefault();
+            const archivo = formCert.elements.certificado.files[0];
+            if (!archivo || archivo.size > MAX_PEM) { mostrarMensaje('Elegí el certificado (hasta 16 KB).', 'error'); return; }
+            const r = await conBoton(formCert.querySelector('button[type=submit]'), async () => api(`${base}/${encodeURIComponent(p.id)}/certificado`,
+                { method: 'POST', body: { certificado_pem: await archivo.text() } }));
+            if (r) { mostrarMensaje('Certificado cargado y en uso.', 'ok'); certificados(tarjeta, rs, modo); }
+        });
+        zona.append(el('div', { class: 'accesos-rs' },
+            el('div', {}, el('strong', {}, p.alias), ' ', el('span', { class: 'sub' }, 'pedido del ' + fechaHora(p.creado_en))),
+            csr, formCert));
+    }
+}
+
+// Conexion con ARCA: estado de los servidores y del ticket, prueba de conexion, desbloqueo y parametros fiscales.
+async function conexionArca(tarjeta, rs, modo) {
+    vaciar(tarjeta);
+    const base = `/api/razones-sociales/${encodeURIComponent(rs.id)}/arca`;
+    const selector = el('select', { 'aria-label': 'Modo' },
+        el('option', { value: 'prueba', selected: modo === 'prueba' }, 'Prueba (homologación)'),
+        el('option', { value: 'empresa', selected: modo === 'empresa' }, 'Empresa (producción)'));
+    selector.addEventListener('change', () => conexionArca(tarjeta, rs, selector.value));
+    tarjeta.append(el('div', { class: 'titulo-tarjeta' }, el('h2', {}, 'Conexión con ARCA'), selector));
+    let e;
+    try {
+        e = await api(`${base}/estado?modo=${encodeURIComponent(modo)}`);
+    } catch (err) {
+        mostrarMensaje(err.message, 'error');
+        return;
+    }
+    const srv = e.servidores || {};
+    const servidoresOk = srv.aplicacion === 'OK' && srv.base === 'OK' && srv.autenticacion === 'OK';
+    tarjeta.append(el('dl', { class: 'datos' },
+        el('dt', {}, 'Servidores de ARCA'), el('dd', {}, el('span', { class: 'etiqueta ' + (servidoresOk ? 'ok' : 'error') },
+            servidoresOk ? 'Funcionando' : 'Con problemas' + (srv.error ? ` (${srv.error})` : ''))),
+        el('dt', {}, 'Certificado'), el('dd', {}, e.certificado ? `${e.certificado.alias}, vence ${fecha(e.certificado.vence)}` : 'Sin cargar'),
+        el('dt', {}, 'Acceso (ticket)'), el('dd', {}, e.ticket_vence ? `Vigente hasta ${fechaHora(e.ticket_vence)}` : 'Sin ticket vigente'),
+        e.ultimo_error ? el('dt', {}, 'Último rechazo') : null,
+        e.ultimo_error ? el('dd', {}, el('span', { class: 'etiqueta error' }, e.ultimo_error), ' ', fechaHora(e.ultimo_error_en)) : null,
+        e.bloqueado_hasta ? el('dt', {}, 'Reintento') : null,
+        e.bloqueado_hasta ? el('dd', {}, e.bloqueado_hasta.startsWith('9999') ? 'Detenido hasta corregirlo en ARCA' : 'Desde ' + fechaHora(e.bloqueado_hasta)) : null));
+    const accion = (texto, ruta, ok) => {
+        const b = el('button', { type: 'button', class: 'secundario' }, texto);
+        b.addEventListener('click', async () => {
+            const r = await conBoton(b, () => api(`${base}/${ruta}`, { method: 'POST', body: { modo } }));
+            if (r) { mostrarMensaje(ok(r), 'ok'); conexionArca(tarjeta, rs, modo); }
+        });
+        return b;
+    };
+    tarjeta.append(el('div', { class: 'acciones' },
+        accion('Probar conexión', 'conectar', () => 'Conexión correcta.'),
+        accion('Actualizar parámetros fiscales', 'parametros', r => r.nueva ? `Parámetros actualizados (versión ${r.version}).` : 'Los parámetros no cambiaron.'),
+        e.bloqueado_hasta ? accion('Ya lo corregí: desbloquear', 'desbloquear', () => 'Desbloqueado. Probá la conexión.') : null));
 }
