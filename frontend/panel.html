@@ -4,44 +4,73 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>JZBill</title>
-    <link rel="stylesheet" href="/static/css/app.css?v=0.1.0">
+    <link rel="stylesheet" href="/static/css/app.css?v=0.2.0">
 </head>
-<body>
-    <header class="barra">
+<body class="panel">
+    <div class="acento-superior"></div>
+
+    <nav class="lateral" aria-label="Secciones">
         <div class="marca">
             <svg class="icono-marca" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l3 3v15l-2-1.2-2 1.2-2-1.2-2 1.2-2-1.2-2 1.2V3zM9 9h6M9 13h6M9 17h3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <h1>JZBill</h1>
         </div>
-        <div class="barra-derecha">
-            <span id="usuario" class="usuario"></span>
-            <button id="salir" class="secundario" type="button">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                Salir
+        <button class="nav-btn" type="button" data-vista="inicio" title="Inicio">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7M5 10v10h5v-6h4v6h5V10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="etiqueta-nav">Inicio</span>
+        </button>
+        <button class="nav-btn oculto" type="button" data-vista="razones" data-admin title="Razones sociales">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21V5l8-3v19M12 9h8v12M7 8h2M7 12h2M7 16h2M15 13h2M15 17h2M2 21h20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="etiqueta-nav">Razones sociales</span>
+        </button>
+        <button class="nav-btn oculto" type="button" data-vista="usuarios" data-admin title="Usuarios">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 20v-2a4 4 0 0 0-3-3.9M16 2.1a4 4 0 0 1 0 7.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="etiqueta-nav">Usuarios</span>
+        </button>
+        <button class="nav-btn oculto" type="button" data-vista="auditoria" data-admin title="Auditoría">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM9 12l2 2 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="etiqueta-nav">Auditoría</span>
+        </button>
+        <div class="lateral-abajo">
+            <button id="avatar-btn" class="nav-btn avatar-btn" type="button" aria-haspopup="true" aria-expanded="false" title="Cuenta y división empresa">
+                <span id="avatar" class="avatar"></span>
+                <span id="avatar-nombre" class="etiqueta-nav"></span>
             </button>
         </div>
-    </header>
+    </nav>
 
-    <main class="contenido">
-        <section class="tarjeta">
-            <h2>Cambiar contraseña</h2>
-            <p class="ayuda">Al cambiarla se cierran las sesiones abiertas en los demás dispositivos.</p>
-            <form id="form-clave" autocomplete="off">
-                <label>Contraseña actual <input id="clave-actual" type="password" required maxlength="128" autocomplete="current-password"></label>
-                <label>Contraseña nueva (mínimo 10 caracteres) <input id="clave-nueva" type="password" required minlength="10" maxlength="128" autocomplete="new-password"></label>
-                <label>Repetir la contraseña nueva <input id="clave-repetida" type="password" required minlength="10" maxlength="128" autocomplete="new-password"></label>
-                <div class="acciones"><button type="submit">Cambiar contraseña</button></div>
-            </form>
-        </section>
+    <div id="menu-avatar" class="menu-avatar oculto" role="dialog" aria-label="Cuenta y división empresa"></div>
 
-        <section class="tarjeta">
-            <h2>Sesiones</h2>
-            <p class="ayuda">Cierra la sesión en todos los dispositivos, incluido este.</p>
-            <div class="acciones"><button id="cerrar-todas" class="secundario" type="button">Cerrar todas las sesiones</button></div>
-        </section>
-    </main>
+    <div class="principal">
+        <header class="encabezado">
+            <h2 id="titulo-vista">Inicio</h2>
+            <div id="contexto-chip" class="contexto-chip"></div>
+        </header>
+
+        <main>
+            <section id="vista-inicio" class="vista"></section>
+            <section id="vista-razones" class="vista oculto"></section>
+            <section id="vista-usuarios" class="vista oculto"></section>
+            <section id="vista-auditoria" class="vista oculto"></section>
+            <section id="vista-cuenta" class="vista oculto">
+                <div class="tarjeta">
+                    <h2>Cambiar contraseña</h2>
+                    <p class="ayuda">Al cambiarla se cierran las sesiones abiertas en los demás dispositivos.</p>
+                    <form id="form-clave" autocomplete="off">
+                        <label>Contraseña actual <input id="clave-actual" type="password" required maxlength="128" autocomplete="current-password"></label>
+                        <label>Contraseña nueva (mínimo 10 caracteres) <input id="clave-nueva" type="password" required minlength="10" maxlength="128" autocomplete="new-password"></label>
+                        <label>Repetir la contraseña nueva <input id="clave-repetida" type="password" required minlength="10" maxlength="128" autocomplete="new-password"></label>
+                        <div class="acciones"><button type="submit">Cambiar contraseña</button></div>
+                    </form>
+                </div>
+            </section>
+        </main>
+    </div>
 
     <p id="mensaje" class="mensaje mensaje-flotante" role="alert"></p>
-    <script src="/static/js/api.js?v=0.1.0"></script>
-    <script src="/static/js/panel.js?v=0.1.0"></script>
+    <script src="/static/js/api.js?v=0.2.0"></script>
+    <script src="/static/js/admin-razones.js?v=0.2.0"></script>
+    <script src="/static/js/admin-usuarios.js?v=0.2.0"></script>
+    <script src="/static/js/admin-auditoria.js?v=0.2.0"></script>
+    <script src="/static/js/panel.js?v=0.2.0"></script>
 </body>
 </html>
