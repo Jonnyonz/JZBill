@@ -17,6 +17,11 @@ from jzbill.permisos import (es_admin, modos_permitidos, puntos_venta_visibles, 
 router = APIRouter(prefix="/api/razones-sociales", tags=["Razones sociales"])
 
 CondicionIva = Literal["responsable_inscripto", "monotributo", "exento"]
+# Paleta para distinguir razones sociales (barra superior del panel): primero los primarios (rojo, azul,
+# amarillo), despues los secundarios (verde, naranja, violeta) y otros. Misma lista que la migracion 0003.
+PALETA = ("#d32f2f", "#1565c0", "#f9a825", "#2e7d32", "#ef6c00", "#6a1b9a",
+          "#0288d1", "#c2185b", "#6d4c41", "#546e7a")
+_COLOR = r"^#[0-9a-fA-F]{6}$"
 
 
 class RazonSocialNueva(BaseModel):
@@ -26,6 +31,7 @@ class RazonSocialNueva(BaseModel):
     condicion_iva: CondicionIva
     domicilio: str = Field(default="", max_length=300)
     regimen_arba_bsas: bool = False
+    color: Optional[str] = Field(default=None, pattern=_COLOR)
 
 
 class RazonSocialCambios(BaseModel):
@@ -35,6 +41,7 @@ class RazonSocialCambios(BaseModel):
     domicilio: Optional[str] = Field(default=None, max_length=300)
     regimen_arba_bsas: Optional[bool] = None
     activa: Optional[bool] = None
+    color: Optional[str] = Field(default=None, pattern=_COLOR)
 
 
 class PuntoVentaNuevo(BaseModel):
@@ -58,6 +65,7 @@ def _rs_salida(fila, modos: list) -> dict:
         "domicilio": fila["domicilio"],
         "regimen_arba_bsas": fila["regimen_arba_bsas"],
         "activa": fila["activa"],
+        "color": fila["color"],
         "modos": modos,
     }
 
@@ -91,13 +99,15 @@ async def crear(data: RazonSocialNueva, request: Request, admin: dict = Depends(
     if not nombre:
         raise HTTPException(400, "Falta el nombre legal.")
     async with conn.transaction():
+        color = data.color.lower() if data.color else PALETA[
+            await conn.fetchval("SELECT count(*) FROM razones_sociales") % len(PALETA)]
         try:
             fila = await conn.fetchrow("""
                 INSERT INTO razones_sociales (cuit, nombre_legal, nombre_fantasia, condicion_iva, domicilio,
-                                              regimen_arba_bsas)
-                VALUES ($1, $2, $3, $4, $5, $6) RETURNING *
+                                              regimen_arba_bsas, color)
+                VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *
             """, cuit, nombre, data.nombre_fantasia.strip(), data.condicion_iva, data.domicilio.strip(),
-                data.regimen_arba_bsas)
+                data.regimen_arba_bsas, color)
         except asyncpg.UniqueViolationError:
             raise HTTPException(409, "Ya existe una razón social con ese CUIT.")
         await registrar(conn, admin["id"], admin["usuario"], "RAZON_SOCIAL_ALTA",
@@ -124,14 +134,16 @@ async def modificar(razon_social_id: str, data: RazonSocialCambios, request: Req
     for campo in ("nombre_fantasia", "domicilio"):
         if campo in cambios:
             cambios[campo] = cambios[campo].strip()
+    if "color" in cambios:
+        cambios["color"] = cambios["color"].lower()
     nuevo = {**dict(actual), **cambios}
     async with conn.transaction():
         fila = await conn.fetchrow("""
             UPDATE razones_sociales SET nombre_legal = $2, nombre_fantasia = $3, condicion_iva = $4,
-                   domicilio = $5, regimen_arba_bsas = $6, activa = $7, actualizado_en = now()
+                   domicilio = $5, regimen_arba_bsas = $6, activa = $7, color = $8, actualizado_en = now()
             WHERE id = $1 RETURNING *
         """, actual["id"], nuevo["nombre_legal"], nuevo["nombre_fantasia"], nuevo["condicion_iva"],
-            nuevo["domicilio"], nuevo["regimen_arba_bsas"], nuevo["activa"])
+            nuevo["domicilio"], nuevo["regimen_arba_bsas"], nuevo["activa"], nuevo["color"])
         modificados = sorted(k for k in cambios if actual[k] != fila[k])
         if modificados:
             await registrar(conn, admin["id"], admin["usuario"], "RAZON_SOCIAL_CAMBIO",
