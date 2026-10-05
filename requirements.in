@@ -1,0 +1,12 @@
+# Dependencias DIRECTAS de JZFactura, con version exacta (las mismas del middleware JZ_Middle_ML-Tracker,
+# set comun de la suite JZTech). Lo transitivo lo fija requirements.txt, con hashes.
+# Toda dependencia nueva se justifica en DEPENDENCIAS.md (que resuelve, por que no alcanza la
+# biblioteca estandar, que tenga wheel precompilada para Linux x86_64).
+# Regenerar el lockfile SIEMPRE desde Linux y Python 3.11 (el piso soportado), por ejemplo con Docker:
+#   docker run --rm -v "$PWD:/w" -w /w python:3.11-slim sh -c "pip install pip-tools==7.4.1 && pip-compile --allow-unsafe --generate-hashes --output-file=requirements.txt requirements.in"
+# Instalar siempre con: pip install --require-hashes --only-binary=:all: -r requirements.txt
+fastapi==0.141.1
+uvicorn==0.54.0
+pydantic==2.13.5
+asyncpg==0.31.0
+jztech-core @ https://github.com/Jonnyonz/jztech-core/releases/download/v0.1.5/jztech_core-0.1.5-py3-none-any.whl

@@ -1,0 +1,11 @@
+# Herramientas de desarrollo y CI (NO se instalan en el servidor). Version exacta; el lockfile
+# requirements-dev.txt lleva hashes y respeta las versiones de produccion (-c requirements.txt).
+#   pytest:    tests (backend/tests/)
+#   httpx:     lo pide fastapi.testclient.TestClient
+#   pip-audit: auditoria de vulnerabilidades de las dependencias (cierre de cada fase)
+# Regenerar desde Linux y Python 3.11:
+#   docker run --rm -v "$PWD:/w" -w /w python:3.11-slim sh -c "pip install pip-tools==7.4.1 && pip-compile --allow-unsafe --strip-extras --generate-hashes --output-file=requirements-dev.txt requirements-dev.in"
+-c requirements.txt
+pytest==9.1.1
+httpx==0.28.1
+pip-audit==2.10.1
