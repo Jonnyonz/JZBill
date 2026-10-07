@@ -1,43 +1,38 @@
 #!/bin/bash
 # ==============================================================================
-# Instalador nativo (sin Docker) de JZBill - ESQUELETO de la Fase 0
+# Instalador nativo (sin Docker) de JZBill
 # ==============================================================================
-# Adaptado de install-native.sh de JZ_Middle_ML-Tracker (mismo patron). Para Debian 12/13 y Ubuntu 24.04
-# (apt, Python 3.11 o mas nuevo). Correr como root desde la raiz del repo clonado o de una version
-# descargada:
+# Para Debian 12/13 y Ubuntu 24.04 (apt, Python 3.11 o mas nuevo). Correr como root desde la raiz del repo
+# clonado completo:
 #
-#   sudo ./install-native.sh                                  por IP: https://<ip del servidor>:8443
-#   sudo JZB_DOMAIN=factura.cliente.com ./install-native.sh   dominio: https://factura.cliente.com
+#   sudo ./install-native.sh                                  https://<ip del servidor>:9443
+#   sudo JZB_DOMAIN=factura.cliente.com ./install-native.sh   https://factura.cliente.com:9443
 #
-# Se instala en el MISMO servidor que el Tracker360 del cliente. Queda asi:
+# Queda asi:
 #   /opt/jzbill/releases/<version>/   codigo + su propio venv (una carpeta por version)
-#   /opt/jzbill/current               enlace a la version en uso (el actualizador lo va a cambiar)
+#   /opt/jzbill/current               enlace a la version en uso
 #   /etc/jzbill/jzbill.env            configuracion y secretos (root:jzbill, 0640)
-#   servicio systemd "jzbill"         uvicorn en 127.0.0.1:8050, un worker
+#   /etc/jzbill/tls/                  certificado HTTPS (cert.pem, key.pem)
+#   servicio systemd "jzbill"         la app con HTTPS propio en el puerto 9443, un worker
 #   base "jzbill_db" y rol "jzbill" propios en el PostgreSQL del servidor
-#   Caddy delante con HTTPS (la sesion usa cookies Secure: sin HTTPS no se puede ingresar)
 #
-# Por IP, el HTTPS va por defecto al puerto 8443: el 443 de la IP lo usa Tracker360. El certificado lo da la
-# CA local de Caddy (la misma de Tracker360): cada terminal tiene que confiar en esa CA una sola vez.
-#
-# El Caddyfile se comparte con las otras apps de JZTech: solo se le agrega el bloque de JZBill. Si existe y no
-# lo armo un instalador de JZTech, NO se toca: se muestra el bloque para agregarlo a mano. Si al agregarlo
-# deja de validar, se vuelve al Caddyfile anterior.
+# Sin proxy: la app sirve HTTPS directamente (la sesion usa cookies Secure: sin HTTPS no se puede ingresar).
+# Si no hay certificado, se genera uno autofirmado para la IP o el dominio: cada terminal tiene que confiar en
+# /etc/jzbill/tls/cert.pem una vez. Para usar uno propio (por ejemplo de un dominio): copiar cert.pem (con la
+# cadena) y key.pem a /etc/jzbill/tls/, borrar /etc/jzbill/tls/.autofirmado y volver a correr.
 #
 # Pendiente para la Fase 9: actualizador jz-bill-actualizar (respaldo, migracion, chequeo, vuelta atras).
 #
 # Idempotente: se puede volver a correr. Los secretos ya generados (clave de la base, token de
-# instalacion) no se pisan. Sin compilador: las dependencias se instalan solo con paquetes binarios
-# (wheels) y verificando los hashes de requirements.txt; si hay una carpeta wheelhouse/ al lado, se usa
-# esa (instalacion sin internet).
+# instalacion, clave maestra) no se pisan. Sin compilador: las dependencias se instalan solo con paquetes
+# binarios (wheels) y verificando los hashes de requirements.txt; si hay una carpeta wheelhouse/ al lado, se
+# usa esa (instalacion sin internet).
 #
 # Variables opcionales (si no se pasan, se reutilizan las de la instalacion anterior):
-#   JZB_DOMAIN=factura.cliente.com   dominio (Caddy saca el certificado solo; tiene que apuntar aca)
+#   JZB_DOMAIN=factura.cliente.com   nombre para entrar (va en el certificado autofirmado)
 #   JZB_IP=192.168.1.10              IP del servidor, si no se usa dominio (por defecto se detecta)
-#   JZB_HTTPS_PORT=8443              puerto HTTPS (por defecto 8443 con IP y 443 con dominio)
-#   JZB_TLS_INTERNAL=1               con dominio, usar igual la CA local de Caddy (dominio solo de la red interna)
-#   JZB_CADDY=0                      no instalar ni tocar Caddy (si el servidor ya usa otro proxy HTTPS)
-#   JZB_PORT=8050                    puerto local del servicio
+#   JZB_HTTPS_PORT=9443              puerto HTTPS (1024 o mas)
+#   JZB_BIND=0.0.0.0                 IP donde escucha (0.0.0.0 = todas; 127.0.0.1 = solo este equipo)
 # ==============================================================================
 
 set -euo pipefail
@@ -48,15 +43,10 @@ BASE_DIR="${JZB_DIR:-/opt/jzbill}"
 RELEASES="$BASE_DIR/releases"
 ENV_DIR="/etc/$APP_NAME"
 ENV_FILE="$ENV_DIR/$APP_NAME.env"
+TLS_DIR="$ENV_DIR/tls"
 SERVICE="$APP_NAME"
 DB_NAME="jzbill_db"
 DB_USER="jzbill"
-APP_BIND="127.0.0.1"
-CADDY="${JZB_CADDY:-1}"
-TLS_INTERNAL="${JZB_TLS_INTERNAL:-0}"
-CADDYFILE="/etc/caddy/Caddyfile"
-MARCA="# Gestionado por los instaladores nativos de JZTech"
-CA_LOCAL="/var/lib/caddy/.local/share/caddy/pki/authorities/local/root.crt"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd /   # psql como postgres no puede entrar a la carpeta desde la que se corre (por ejemplo /root)
@@ -75,7 +65,8 @@ if [ ! -f /etc/debian_version ]; then
   exit 1
 fi
 if [ ! -f "$SCRIPT_DIR/backend/jzbill/__init__.py" ] || [ ! -f "$SCRIPT_DIR/requirements.txt" ]; then
-  echo "Error: correr el script desde la raiz del repo (faltan backend/jzbill/ o requirements.txt)." >&2
+  echo "Error: falta el resto del repo al lado del script (backend/jzbill/, requirements.txt)." >&2
+  echo "Clonarlo completo: git clone https://github.com/Jonnyonz/JZBill.git" >&2
   exit 1
 fi
 VERSION="$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' "$SCRIPT_DIR/backend/jzbill/__init__.py")"
@@ -85,47 +76,42 @@ if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
 fi
 echo "Version a instalar: $VERSION"
 
-# Direccion de acceso: dominio o IP, y puertos. Lo que no se pasa se toma de la instalacion anterior.
+# Direccion de acceso: dominio o IP, y puerto. Lo que no se pasa se toma de la instalacion anterior.
 valor_env() { if [ -f "$ENV_FILE" ]; then sed -n "s/^$1=//p" "$ENV_FILE" | tail -n1; fi; }
 DOMAIN="${JZB_DOMAIN:-$(valor_env JZB_DOMAIN)}"
 IP="${JZB_IP:-$(valor_env JZB_IP)}"
 if [ -z "$DOMAIN" ] && [ -z "$IP" ]; then
   IP="$(ip -4 route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\1/p')"
 fi
+ES_IP='^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'
 if [ -n "$DOMAIN" ] && ! [[ "$DOMAIN" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]]; then
   echo "Error: dominio invalido: $DOMAIN" >&2
   exit 1
 fi
-if [ -z "$DOMAIN" ] && ! [[ "$IP" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+if [ -z "$DOMAIN" ] && ! [[ "$IP" =~ $ES_IP ]]; then
   echo "Error: no se pudo saber la IP del servidor. Indicarla con JZB_IP=192.168.1.10 (o usar JZB_DOMAIN)." >&2
   exit 1
 fi
-if [ -n "$DOMAIN" ]; then HOST="$DOMAIN"; PUERTO_DEF=443; else HOST="$IP"; PUERTO_DEF=8443; fi
-HTTPS_PORT="${JZB_HTTPS_PORT:-$(valor_env JZB_HTTPS_PORT)}"; HTTPS_PORT="${HTTPS_PORT:-$PUERTO_DEF}"
-APP_PORT="${JZB_PORT:-$(valor_env APP_PORT)}"; APP_PORT="${APP_PORT:-8050}"
-for PUERTO in "$HTTPS_PORT" "$APP_PORT"; do
-  if ! [[ "$PUERTO" =~ ^[0-9]+$ ]] || [ "$PUERTO" -lt 1 ] || [ "$PUERTO" -gt 65535 ]; then
-    echo "Error: puerto invalido: $PUERTO" >&2
-    exit 1
-  fi
-done
-if [ "$HTTPS_PORT" = "443" ]; then SITIO="https://$HOST"; else SITIO="https://$HOST:$HTTPS_PORT"; fi
-echo "Direccion: $SITIO"
-
-# El puerto local tiene que estar libre, salvo que lo use la propia instalacion anterior.
-OCUPANTE="$(ss -ltnpH "( sport = :$APP_PORT )" 2>/dev/null || true)"
-if [ -n "$OCUPANTE" ] && ! systemctl is-active --quiet "$SERVICE"; then
-  echo "Error: el puerto local $APP_PORT ya esta en uso:" >&2
-  echo "$OCUPANTE" >&2
-  echo "Usar otro puerto con JZB_PORT=8051." >&2
+if [ -n "$DOMAIN" ]; then HOST="$DOMAIN"; else HOST="$IP"; fi
+HTTPS_PORT="${JZB_HTTPS_PORT:-$(valor_env JZB_HTTPS_PORT)}"; HTTPS_PORT="${HTTPS_PORT:-9443}"
+BIND="${JZB_BIND:-$(valor_env JZB_BIND)}"; BIND="${BIND:-0.0.0.0}"
+if ! [[ "$HTTPS_PORT" =~ ^[0-9]+$ ]] || [ "$HTTPS_PORT" -lt 1024 ] || [ "$HTTPS_PORT" -gt 65535 ]; then
+  echo "Error: puerto invalido: $HTTPS_PORT (de 1024 a 65535)." >&2
   exit 1
 fi
+if ! [[ "$BIND" =~ $ES_IP ]]; then
+  echo "Error: JZB_BIND tiene que ser una IPv4 (0.0.0.0, 127.0.0.1 o la IP del servidor)." >&2
+  exit 1
+fi
+SITIO="https://$HOST:$HTTPS_PORT"
+echo "Direccion: $SITIO"
 
-# La direccion HTTPS no puede ser la de otra app del Caddyfile compartido. Se revisa ANTES de cambiar nada.
-PRIMERA="$SITIO {"
-if [ "$CADDY" = "1" ] && [ -f "$CADDYFILE" ] && grep -qxF "$PRIMERA" "$CADDYFILE" \
-    && [ "$(grep -xF -B1 "$PRIMERA" "$CADDYFILE" | head -n1)" != "# jzbill" ]; then
-  echo "Error: la direccion $SITIO ya la usa otra app en $CADDYFILE. Elegir otro puerto con JZB_HTTPS_PORT." >&2
+# El puerto tiene que estar libre, salvo que lo use la propia instalacion anterior.
+OCUPANTE="$(ss -ltnpH "( sport = :$HTTPS_PORT )" 2>/dev/null || true)"
+if [ -n "$OCUPANTE" ] && ! systemctl is-active --quiet "$SERVICE"; then
+  echo "Error: el puerto $HTTPS_PORT ya esta en uso:" >&2
+  echo "$OCUPANTE" >&2
+  echo "Usar otro con JZB_HTTPS_PORT=9444." >&2
   exit 1
 fi
 
@@ -133,7 +119,7 @@ fi
 echo "Instalando paquetes del sistema..."
 apt-get update -qq
 apt-get install -y -qq python3 python3-venv postgresql postgresql-client openssl curl rsync ca-certificates \
-  gnupg iproute2 > /dev/null
+  iproute2 > /dev/null
 if ! python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)'; then
   echo "Error: hace falta Python 3.11 o mas nuevo (este sistema tiene $(python3 --version 2>&1))." >&2
   echo "Sistemas soportados: Debian 12, Debian 13, Ubuntu 24.04." >&2
@@ -225,12 +211,36 @@ fi
 chown root:"$APP_USER" "$CLAVE_SECRETOS"
 chmod 640 "$CLAVE_SECRETOS"
 
-# 7. Configuracion (se reescribe con los mismos secretos; root:jzbill 0640)
+# 7. Certificado HTTPS. Uno propio (sin .autofirmado) no se toca. El autofirmado se rehace si cambio el nombre
+#    o la IP, o si vence en menos de 30 dias.
+mkdir -p "$TLS_DIR"
+if [[ "$HOST" =~ $ES_IP ]]; then SAN="IP:$HOST"; else SAN="DNS:$HOST"; fi
+REHACER=0
+if [ ! -f "$TLS_DIR/cert.pem" ] || [ ! -f "$TLS_DIR/key.pem" ]; then
+  REHACER=1
+elif [ -f "$TLS_DIR/.autofirmado" ] && { [ "$(cat "$TLS_DIR/.autofirmado")" != "$SAN" ] \
+    || ! openssl x509 -checkend 2592000 -noout -in "$TLS_DIR/cert.pem" > /dev/null; }; then
+  REHACER=1
+fi
+if [ "$REHACER" = "1" ]; then
+  echo "Generando certificado HTTPS autofirmado para $HOST..."
+  (umask 077 && openssl req -x509 -newkey rsa:2048 -nodes -sha256 -days 825 -subj "/CN=$HOST" \
+    -addext "subjectAltName=$SAN" -addext "extendedKeyUsage=serverAuth" \
+    -keyout "$TLS_DIR/key.pem.tmp" -out "$TLS_DIR/cert.pem.tmp" 2> /dev/null)
+  mv -f "$TLS_DIR/key.pem.tmp" "$TLS_DIR/key.pem"
+  mv -f "$TLS_DIR/cert.pem.tmp" "$TLS_DIR/cert.pem"
+  echo "$SAN" > "$TLS_DIR/.autofirmado"
+fi
+chown root:"$APP_USER" "$TLS_DIR/key.pem"
+chmod 640 "$TLS_DIR/key.pem"
+chmod 644 "$TLS_DIR/cert.pem"
+
+# 8. Configuracion (se reescribe con los mismos secretos; root:jzbill 0640)
 echo "Escribiendo $ENV_FILE..."
 ADICIONALES=""
 if [ -f "$ENV_FILE" ]; then
   # Lo que el administrador agrego a mano se conserva.
-  ADICIONALES="$(grep -Ev '^(#|$|POSTGRES_|SETUP_TOKEN=|SECRETS_KEY_FILE=|PUBLIC_URL=|TRUSTED_PROXIES=|COOKIES_SECURE=|APP_PORT=|JZB_(INSTALACION|DOMAIN|IP|HTTPS_PORT)=|PYTHONDONTWRITEBYTECODE=)' "$ENV_FILE" || true)"
+  ADICIONALES="$(grep -Ev '^(#|$|POSTGRES_|SETUP_TOKEN=|SECRETS_KEY_FILE=|PUBLIC_URL=|TRUSTED_PROXIES=|COOKIES_SECURE=|APP_PORT=|JZB_|PYTHONDONTWRITEBYTECODE=)' "$ENV_FILE" || true)"
 fi
 TMP_ENV="$(mktemp "$ENV_DIR/.env.XXXXXX")"
 cat > "$TMP_ENV" <<EOF
@@ -243,13 +253,13 @@ POSTGRES_USER=$DB_USER
 POSTGRES_PASSWORD=$DB_PASSWORD
 SETUP_TOKEN=$SETUP_TOKEN
 PUBLIC_URL=$SITIO
-TRUSTED_PROXIES=127.0.0.1/32,::1/128
+TRUSTED_PROXIES=
 COOKIES_SECURE=true
-APP_PORT=$APP_PORT
 JZB_INSTALACION=nativa
 JZB_DOMAIN=$DOMAIN
 JZB_IP=$IP
 JZB_HTTPS_PORT=$HTTPS_PORT
+JZB_BIND=$BIND
 SECRETS_KEY_FILE=$CLAVE_SECRETOS
 PYTHONDONTWRITEBYTECODE=1
 EOF
@@ -260,7 +270,7 @@ chown root:"$APP_USER" "$TMP_ENV"
 chmod 640 "$TMP_ENV"
 mv -f "$TMP_ENV" "$ENV_FILE"
 
-# 8. Version en uso y servicio systemd
+# 9. Version en uso y servicio systemd
 ln -sfn "$DEST" "$BASE_DIR/current.tmp"
 mv -Tf "$BASE_DIR/current.tmp" "$BASE_DIR/current"
 
@@ -277,7 +287,7 @@ Group=$APP_USER
 WorkingDirectory=$BASE_DIR/current
 EnvironmentFile=$ENV_FILE
 Environment=JZBILL_ENV_FILE=$ENV_FILE
-ExecStart=$BASE_DIR/current/venv/bin/uvicorn jzbill.main:app --app-dir $BASE_DIR/current/backend --host $APP_BIND --port $APP_PORT --workers 1 --no-proxy-headers --no-server-header
+ExecStart=$BASE_DIR/current/venv/bin/uvicorn jzbill.main:app --app-dir $BASE_DIR/current/backend --host $BIND --port $HTTPS_PORT --ssl-certfile $TLS_DIR/cert.pem --ssl-keyfile $TLS_DIR/key.pem --workers 1 --no-proxy-headers --no-server-header
 Restart=on-failure
 RestartSec=5
 NoNewPrivileges=yes
@@ -306,115 +316,20 @@ systemctl enable "$SERVICE" > /dev/null
 systemctl restart "$SERVICE"
 
 echo "Esperando que el servicio responda..."
+if [ "$BIND" = "0.0.0.0" ]; then LOCAL="127.0.0.1"; else LOCAL="$BIND"; fi
 OK=0
 for _ in $(seq 1 30); do
-  if curl -fsS "http://$APP_BIND:$APP_PORT/api/health" 2>/dev/null | grep -q "\"version\":\"$VERSION\""; then
+  # -k: es solo el chequeo local de que responde; el certificado lo valida cada navegador.
+  if curl -fsSk --max-time 5 "https://$LOCAL:$HTTPS_PORT/api/health" 2>/dev/null | grep -q "\"version\":\"$VERSION\""; then
     OK=1
     break
   fi
   sleep 2
 done
 if [ "$OK" != "1" ]; then
-  echo "Error: el servicio no responde en http://$APP_BIND:$APP_PORT/api/health." >&2
+  echo "Error: el servicio no responde en https://$LOCAL:$HTTPS_PORT/api/health." >&2
   echo "Ver el detalle con: journalctl -u $SERVICE -n 50 --no-pager" >&2
   exit 1
-fi
-echo "Servicio en marcha (version $VERSION)."
-
-# 9. Proxy HTTPS (Caddy), compartido con las otras apps de JZTech del servidor.
-if [ -z "$DOMAIN" ] || [ "$TLS_INTERNAL" = "1" ]; then
-  TLS_LINEA="tls internal"
-else
-  TLS_LINEA="# certificado automatico: el dominio tiene que apuntar a este servidor"
-fi
-BLOQUE="$PRIMERA
-    $TLS_LINEA
-    header {
-        Strict-Transport-Security \"max-age=31536000\"
-        -Server
-    }
-    reverse_proxy $APP_BIND:$APP_PORT
-}"
-if [ "$CADDY" = "1" ]; then
-  EN_HTTPS="$(ss -ltnpH "( sport = :$HTTPS_PORT )" 2>/dev/null | grep -v '"caddy"' || true)"
-  EN_80="$(ss -ltnpH '( sport = :80 )' 2>/dev/null | grep -v '"caddy"' || true)"
-  if [ -n "$EN_HTTPS" ]; then
-    echo "Aviso: el puerto $HTTPS_PORT lo usa otro programa; no se configura Caddy (elegir otro con JZB_HTTPS_PORT)." >&2
-    echo "$EN_HTTPS" >&2
-    CADDY="0"
-  elif [ -f "$CADDYFILE" ] && ! grep -qF "$MARCA" "$CADDYFILE"; then
-    echo "Aviso: $CADDYFILE no lo armo un instalador de JZTech; no se modifica." >&2
-    CADDY="0"
-  elif [ -n "$EN_80" ]; then
-    echo "Aviso: el puerto 80 lo usa otro programa; Caddy atiende solo HTTPS, sin redireccion desde http." >&2
-  fi
-fi
-if [ "$CADDY" = "1" ]; then
-  mkdir -p /etc/caddy
-  RESPALDO_CADDY=""
-  if [ -f "$CADDYFILE" ]; then
-    RESPALDO_CADDY="$(mktemp /etc/caddy/.Caddyfile.jzbill.XXXXXX)"
-    cp -p "$CADDYFILE" "$RESPALDO_CADDY"
-  else
-    # Caddyfile nuevo. Se escribe antes de instalar Caddy para que no arranque con el de ejemplo (puerto 80).
-    GLOBAL=""
-    if [ -n "$EN_80" ]; then GLOBAL=$'{\n\tauto_https disable_redirects\n}\n'; fi
-    printf '%s%s\n%s\n' "$GLOBAL" "$MARCA (install-native.sh)." "# Cada app agrega su propio bloque de sitio abajo." > "$CADDYFILE"
-  fi
-  # Bloque propio siempre al dia: se quita el de una instalacion anterior (desde "# jzbill" hasta su "}",
-  # con las lineas en blanco de antes) y se agrega el actual. El resto del Caddyfile no se toca.
-  awk '/^# jzbill$/ { propio = 1; blancos = ""; next }
-       propio { if ($0 == "}") propio = 0; next }
-       /^$/ { blancos = blancos "\n"; next }
-       { printf "%s", blancos; blancos = ""; print }' "$CADDYFILE" > "$CADDYFILE.jzbill.tmp"
-  printf '\n# jzbill\n%s\n' "$BLOQUE" >> "$CADDYFILE.jzbill.tmp"
-  chmod --reference="$CADDYFILE" "$CADDYFILE.jzbill.tmp" 2>/dev/null || true
-  mv -f "$CADDYFILE.jzbill.tmp" "$CADDYFILE"
-  if ! command -v caddy &> /dev/null; then
-    echo "Instalando Caddy..."
-    if ! DEBIAN_FRONTEND=noninteractive apt-get install -y -qq -o Dpkg::Options::=--force-confold caddy > /dev/null 2>&1; then
-      curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' \
-        | gpg --dearmor --yes -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-      curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' > /etc/apt/sources.list.d/caddy-stable.list
-      apt-get update -qq
-      DEBIAN_FRONTEND=noninteractive apt-get install -y -qq -o Dpkg::Options::=--force-confold caddy > /dev/null
-    fi
-  fi
-  if caddy validate --config "$CADDYFILE" --adapter caddyfile > /dev/null 2>&1; then
-    systemctl enable --now caddy > /dev/null
-    systemctl reload caddy 2> /dev/null || systemctl restart caddy
-    # Se espera a que el HTTPS responda (Caddy emite el certificado unos segundos despues de recargar).
-    CURL_CA=()
-    if [ "$TLS_LINEA" = "tls internal" ] && [ -f "$CA_LOCAL" ]; then CURL_CA=(--cacert "$CA_LOCAL"); fi
-    # Con dominio se fuerza la conexion local (--resolve); con IP se usa la IP real: sin nombre (SNI), Caddy
-    # elige el certificado por la IP de la conexion, y por 127.0.0.1 no tiene ninguno.
-    if [ -n "$DOMAIN" ]; then CURL_CA+=(--resolve "$HOST:$HTTPS_PORT:127.0.0.1"); fi
-    HTTPS_OK=0
-    for _ in $(seq 1 15); do
-      if curl -fsS --max-time 5 "${CURL_CA[@]}" "$SITIO/api/health" 2>/dev/null \
-          | grep -q "\"version\":\"$VERSION\""; then
-        HTTPS_OK=1
-        break
-      fi
-      sleep 2
-    done
-    if [ "$HTTPS_OK" = "1" ]; then
-      echo "HTTPS en marcha: $SITIO"
-    else
-      echo "Aviso: el HTTPS todavia no responde en $SITIO. Detalle: journalctl -u caddy -n 50 --no-pager" >&2
-    fi
-  else
-    # No se deja un Caddyfile roto: las otras apps del servidor dependen de el.
-    if [ -n "$RESPALDO_CADDY" ]; then
-      mv -f "$RESPALDO_CADDY" "$CADDYFILE"
-      RESPALDO_CADDY=""
-      echo "Aviso: con el bloque de JZBill el Caddyfile no validaba; se dejo como estaba." >&2
-    else
-      echo "Aviso: el Caddyfile no valida; no se recargo Caddy. Revisar $CADDYFILE." >&2
-    fi
-    CADDY="0"
-  fi
-  if [ -n "$RESPALDO_CADDY" ]; then rm -f "$RESPALDO_CADDY"; fi
 fi
 
 # 10. Resumen
@@ -424,11 +339,8 @@ echo "================================================================="
 echo "INSTALACION COMPLETADA - JZBill $VERSION"
 echo "================================================================="
 echo "Pagina: $SITIO"
-if [ "$CADDY" != "1" ]; then
-  echo "Caddy no se configuro. Agregar al proxy HTTPS del servidor el equivalente a:"
-  echo "$BLOQUE"
-elif [ "$TLS_LINEA" = "tls internal" ]; then
-  echo "Certificado de la CA local de Caddy: cada terminal tiene que confiar en esa CA ($CA_LOCAL)."
+if [ -f "$TLS_DIR/.autofirmado" ]; then
+  echo "Certificado autofirmado: cada terminal tiene que confiar una vez en $TLS_DIR/cert.pem."
 fi
 if [ "$USUARIOS" = "0" ]; then
   echo ""
