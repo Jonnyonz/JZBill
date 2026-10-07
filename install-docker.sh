@@ -1,38 +1,40 @@
 #!/bin/bash
 # ==============================================================================
-# Instalador con Docker de JZBill (app + PostgreSQL + Caddy con HTTPS)
+# Instalador con Docker de JZBill (app con HTTPS propio + PostgreSQL)
 # ==============================================================================
 # Alternativa a install-native.sh para quien ya usa Docker (por ejemplo, un facturador personal). En equipos con
 # pocos recursos conviene la nativa: Docker suma consumo de memoria. Para Linux con Docker Engine y el plugin
-# "docker compose" (v2). Correr como root desde la raiz del repo clonado:
+# "docker compose" (v2). La imagen se arma en el servidor con el codigo del repo: correr como root desde la raiz
+# del repo clonado completo:
 #
-#   sudo ./install-docker.sh                                  por IP: https://<ip del equipo>:8443
-#   sudo JZB_DOMAIN=factura.casa ./install-docker.sh          nombre de la red interna: https://factura.casa:8443
+#   git clone https://github.com/Jonnyonz/JZBill.git && cd JZBill
+#   sudo ./install-docker.sh                                  https://<ip del equipo>:9443
+#   sudo JZB_DOMAIN=factura.casa ./install-docker.sh          https://factura.casa:9443
 #   sudo JZB_BIND=127.0.0.1 ./install-docker.sh               solo desde este mismo equipo
 #
 # Queda asi:
 #   /etc/jzbill-docker/jzbill.env       configuracion y secretos (root, 0600)
 #   /etc/jzbill-docker/clave-secretos   clave maestra de los certificados de ARCA (solo la lee la app)
-#   /etc/jzbill-docker/Caddyfile        sitio HTTPS
-#   /etc/jzbill-docker/ca-local.crt     certificado de la CA local de Caddy (instalarlo en cada terminal)
-#   volumenes jzbill_db (la base) y jzbill_caddy_data (la CA y los certificados de Caddy)
+#   /etc/jzbill-docker/tls/             certificado HTTPS (cert.pem, key.pem)
+#   volumen jzbill_db                   la base
 #
-# El HTTPS lo da la CA local de Caddy ("tls internal"): cada terminal tiene que confiar en ca-local.crt una vez.
-# Con un dominio publico y certificado de Let's Encrypt, usar install-native.sh.
+# Sin proxy: la app sirve HTTPS directamente en el puerto 9443. Si no hay certificado, se genera uno autofirmado
+# para la IP o el nombre: cada terminal tiene que confiar en /etc/jzbill-docker/tls/cert.pem una vez. Para usar
+# uno propio: copiar cert.pem (con la cadena) y key.pem a /etc/jzbill-docker/tls/, borrar
+# /etc/jzbill-docker/tls/.autofirmado y volver a correr.
 #
-# Idempotente: se puede volver a correr (asi tambien se actualiza, despues de bajar la version nueva del repo).
-# Los secretos ya generados no se pisan. Si la base ya existe y falta la clave maestra o la configuracion, se
-# corta: una clave nueva dejaria inutilizables los certificados guardados.
+# Idempotente: se puede volver a correr (asi tambien se actualiza: git pull y volver a correrlo). Los secretos ya
+# generados no se pisan. Si la base ya existe y falta la clave maestra o la configuracion, se corta: una clave
+# nueva dejaria inutilizables los certificados guardados.
 #
 # Ojo: Docker publica el puerto por encima del firewall del sistema (ufw no lo filtra). Si el equipo esta
 # expuesto a internet, usar JZB_BIND=<ip de la red interna> o JZB_BIND=127.0.0.1.
 #
 # Variables opcionales (si no se pasan, se reutilizan las de la instalacion anterior):
-#   JZB_DOMAIN=factura.casa      nombre para entrar (tiene que resolver a este equipo en la red interna)
+#   JZB_DOMAIN=factura.casa      nombre para entrar (va en el certificado autofirmado)
 #   JZB_IP=192.168.1.10          IP del equipo, si no se usa nombre (por defecto se detecta)
-#   JZB_HTTPS_PORT=8443          puerto HTTPS publicado
+#   JZB_HTTPS_PORT=9443          puerto HTTPS publicado
 #   JZB_BIND=0.0.0.0             IP del equipo donde se publica el puerto (0.0.0.0 = todas)
-#   JZB_SUBRED=172.30.86.0/28    subred de la red "web" de Docker (cambiarla solo si choca con la red local)
 #   JZB_CONF=/etc/jzbill-docker  carpeta de configuracion
 # ==============================================================================
 
@@ -42,6 +44,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONF="${JZB_CONF:-/etc/jzbill-docker}"
 ENV_FILE="$CONF/jzbill.env"
 CLAVE_SECRETOS="$CONF/clave-secretos"
+TLS_DIR="$CONF/tls"
 APP_UID=10001   # el usuario de la app dentro de la imagen (Dockerfile)
 
 echo "=================================================="
@@ -55,15 +58,15 @@ if [ "$EUID" -ne 0 ]; then
 fi
 if ! command -v docker &> /dev/null || ! docker compose version &> /dev/null; then
   echo "Error: hace falta Docker Engine con el plugin \"docker compose\" (v2)." >&2
-  echo "Debian/Ubuntu: apt install docker.io docker-compose (o el paquete docker-compose-plugin de Docker)." >&2
   exit 1
 fi
 if ! docker info &> /dev/null; then
   echo "Error: Docker no responde (systemctl start docker)." >&2
   exit 1
 fi
-if [ ! -f "$SCRIPT_DIR/compose.yaml" ] || [ ! -f "$SCRIPT_DIR/backend/jzbill/__init__.py" ]; then
-  echo "Error: correr el script desde la raiz del repo (faltan compose.yaml o backend/jzbill/)." >&2
+if [ ! -f "$SCRIPT_DIR/compose.yml" ] || [ ! -f "$SCRIPT_DIR/Dockerfile" ] || [ ! -f "$SCRIPT_DIR/backend/jzbill/__init__.py" ]; then
+  echo "Error: falta el resto del repo al lado del script (compose.yml, Dockerfile, backend/)." >&2
+  echo "Clonarlo completo: git clone https://github.com/Jonnyonz/JZBill.git" >&2
   exit 1
 fi
 VERSION="$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' "$SCRIPT_DIR/backend/jzbill/__init__.py")"
@@ -80,19 +83,18 @@ IP="${JZB_IP:-$(valor_env JZB_IP)}"
 if [ -z "$DOMAIN" ] && [ -z "$IP" ]; then
   IP="$(ip -4 route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\1/p')"
 fi
+ES_IP='^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'
 if [ -n "$DOMAIN" ] && ! [[ "$DOMAIN" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]]; then
   echo "Error: nombre invalido: $DOMAIN" >&2
   exit 1
 fi
-ES_IP='^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'
 if [ -z "$DOMAIN" ] && ! [[ "$IP" =~ $ES_IP ]]; then
   echo "Error: no se pudo saber la IP del equipo. Indicarla con JZB_IP=192.168.1.10 (o usar JZB_DOMAIN)." >&2
   exit 1
 fi
 if [ -n "$DOMAIN" ]; then HOST="$DOMAIN"; else HOST="$IP"; fi
-HTTPS_PORT="${JZB_HTTPS_PORT:-$(valor_env JZB_HTTPS_PORT)}"; HTTPS_PORT="${HTTPS_PORT:-8443}"
+HTTPS_PORT="${JZB_HTTPS_PORT:-$(valor_env JZB_HTTPS_PORT)}"; HTTPS_PORT="${HTTPS_PORT:-9443}"
 BIND="${JZB_BIND:-$(valor_env JZB_BIND)}"; BIND="${BIND:-0.0.0.0}"
-SUBRED="${JZB_SUBRED:-$(valor_env JZB_SUBRED)}"; SUBRED="${SUBRED:-172.30.86.0/28}"
 if ! [[ "$HTTPS_PORT" =~ ^[0-9]+$ ]] || [ "$HTTPS_PORT" -lt 1 ] || [ "$HTTPS_PORT" -gt 65535 ]; then
   echo "Error: puerto invalido: $HTTPS_PORT" >&2
   exit 1
@@ -101,25 +103,20 @@ if ! [[ "$BIND" =~ $ES_IP ]]; then
   echo "Error: JZB_BIND tiene que ser una IPv4 (0.0.0.0, 127.0.0.1 o la IP de la red interna)." >&2
   exit 1
 fi
-if ! [[ "$SUBRED" =~ ^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.0/(2[4-8])$ ]]; then
-  echo "Error: JZB_SUBRED tiene que ser una red /24 a /28 terminada en .0 (por ejemplo 172.30.86.0/28)." >&2
-  exit 1
-fi
-IP_CADDY="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}.10"
-if [ "$HTTPS_PORT" = "443" ]; then SITIO="https://$HOST"; else SITIO="https://$HOST:$HTTPS_PORT"; fi
+SITIO="https://$HOST:$HTTPS_PORT"
 echo "Direccion: $SITIO"
 
-COMPOSE=(docker compose --project-directory "$SCRIPT_DIR" -f "$SCRIPT_DIR/compose.yaml" --env-file "$ENV_FILE")
+COMPOSE=(docker compose --project-directory "$SCRIPT_DIR" -f "$SCRIPT_DIR/compose.yml" --env-file "$ENV_FILE")
 
-# El puerto tiene que estar libre, salvo que lo use la propia instalacion anterior (el Caddy de JZBill).
+# El puerto tiene que estar libre, salvo que lo use la propia instalacion anterior.
 DB_EXISTE=0
 if docker volume inspect jzbill_db &> /dev/null; then DB_EXISTE=1; fi
-CADDY_ACTIVO="$(docker ps -q --filter label=com.docker.compose.project=jzbill --filter label=com.docker.compose.service=caddy)"
+APP_ACTIVA="$(docker ps -q --filter label=com.docker.compose.project=jzbill --filter label=com.docker.compose.service=app)"
 OCUPANTE="$(ss -ltnH "( sport = :$HTTPS_PORT )" 2>/dev/null || true)"
-if [ -n "$OCUPANTE" ] && [ -z "$CADDY_ACTIVO" ]; then
+if [ -n "$OCUPANTE" ] && [ -z "$APP_ACTIVA" ]; then
   echo "Error: el puerto $HTTPS_PORT ya esta en uso:" >&2
   echo "$OCUPANTE" >&2
-  echo "Usar otro con JZB_HTTPS_PORT=9443." >&2
+  echo "Usar otro con JZB_HTTPS_PORT=9444." >&2
   exit 1
 fi
 
@@ -154,11 +151,36 @@ if [ ! -f "$CLAVE_SECRETOS" ]; then
   (umask 077 && head -c 32 /dev/urandom | base64 -w0 > "$CLAVE_SECRETOS.tmp" && echo >> "$CLAVE_SECRETOS.tmp")
   mv -f "$CLAVE_SECRETOS.tmp" "$CLAVE_SECRETOS"
 fi
-# La lee solo el usuario de la app dentro del contenedor (Docker monta el archivo tal cual, con su dueno).
+# Los lee solo el usuario de la app dentro del contenedor (Docker monta el archivo tal cual, con su dueno).
 chown "$APP_UID:$APP_UID" "$CLAVE_SECRETOS"
 chmod 400 "$CLAVE_SECRETOS"
 
-# 4. Configuracion (se reescribe con los mismos secretos; las lineas agregadas a mano se conservan)
+# 4. Certificado HTTPS. Uno propio (sin .autofirmado) no se toca. El autofirmado se rehace si cambio el nombre
+#    o la IP, o si vence en menos de 30 dias.
+mkdir -p "$TLS_DIR"
+if [[ "$HOST" =~ $ES_IP ]]; then SAN="IP:$HOST"; else SAN="DNS:$HOST"; fi
+REHACER=0
+if [ ! -f "$TLS_DIR/cert.pem" ] || [ ! -f "$TLS_DIR/key.pem" ]; then
+  REHACER=1
+elif [ -f "$TLS_DIR/.autofirmado" ] && { [ "$(cat "$TLS_DIR/.autofirmado")" != "$SAN" ] \
+    || ! openssl x509 -checkend 2592000 -noout -in "$TLS_DIR/cert.pem" > /dev/null; }; then
+  REHACER=1
+fi
+if [ "$REHACER" = "1" ]; then
+  echo "Generando certificado HTTPS autofirmado para $HOST..."
+  (umask 077 && openssl req -x509 -newkey rsa:2048 -nodes -sha256 -days 825 -subj "/CN=$HOST" \
+    -addext "subjectAltName=$SAN" -addext "extendedKeyUsage=serverAuth" \
+    -keyout "$TLS_DIR/key.pem.tmp" -out "$TLS_DIR/cert.pem.tmp" 2> /dev/null)
+  mv -f "$TLS_DIR/key.pem.tmp" "$TLS_DIR/key.pem"
+  mv -f "$TLS_DIR/cert.pem.tmp" "$TLS_DIR/cert.pem"
+  echo "$SAN" > "$TLS_DIR/.autofirmado"
+fi
+chmod 755 "$TLS_DIR"
+chown "$APP_UID:$APP_UID" "$TLS_DIR/key.pem"
+chmod 400 "$TLS_DIR/key.pem"
+chmod 644 "$TLS_DIR/cert.pem"
+
+# 5. Configuracion (se reescribe con los mismos secretos; las lineas agregadas a mano se conservan)
 echo "Escribiendo $ENV_FILE..."
 ADICIONALES=""
 if [ -f "$ENV_FILE" ]; then
@@ -180,8 +202,6 @@ JZB_DOMAIN=$DOMAIN
 JZB_IP=$IP
 JZB_HTTPS_PORT=$HTTPS_PORT
 JZB_BIND=$BIND
-JZB_SUBRED=$SUBRED
-JZB_IP_CADDY=$IP_CADDY
 EOF
 if [ -n "$ADICIONALES" ]; then
   printf '%s\n' "$ADICIONALES" >> "$TMP_ENV"
@@ -189,82 +209,39 @@ fi
 chmod 600 "$TMP_ENV"
 mv -f "$TMP_ENV" "$ENV_FILE"
 
-# 5. Caddy: HTTPS con la CA local. default_sni: entrando por IP el navegador no manda nombre, y dentro de Docker
-#    la IP de destino es la del contenedor; asi Caddy usa igual el certificado de $HOST.
-cat > "$CONF/Caddyfile.tmp" <<EOF
-# Generado por install-docker.sh.
-{
-	auto_https disable_redirects
-	skip_install_trust
-	default_sni $HOST
-}
-
-https://$HOST {
-	tls internal
-	header {
-		Strict-Transport-Security "max-age=31536000"
-		-Server
-	}
-	reverse_proxy app:8050
-}
-EOF
-chmod 644 "$CONF/Caddyfile.tmp"
-mv -f "$CONF/Caddyfile.tmp" "$CONF/Caddyfile"
-
-# 6. Imagen y contenedores
+# 6. Imagen y contenedores (--force-recreate: toma el certificado y la configuracion nuevos)
 echo "Construyendo la imagen jzbill:$VERSION..."
 "${COMPOSE[@]}" build --pull app
 echo "Levantando los contenedores..."
-"${COMPOSE[@]}" up -d --remove-orphans
-# Caddy no relee el Caddyfile solo: se recarga por si cambio la direccion.
-"${COMPOSE[@]}" exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile > /dev/null 2>&1 || true
+"${COMPOSE[@]}" up -d --remove-orphans --force-recreate app db
 
 echo "Esperando que la app responda..."
+if [ "$BIND" = "0.0.0.0" ]; then LOCAL="127.0.0.1"; else LOCAL="$BIND"; fi
 OK=0
 for _ in $(seq 1 45); do
-  if "${COMPOSE[@]}" exec -T app python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8050/api/health', timeout=4).read().decode())" 2>/dev/null \
-      | grep -q "\"version\":\"$VERSION\""; then
+  # -k: es solo el chequeo local de que responde; el certificado lo valida cada navegador.
+  if curl -fsSk --max-time 5 "https://$LOCAL:$HTTPS_PORT/api/health" 2>/dev/null | grep -q "\"version\":\"$VERSION\""; then
     OK=1
     break
   fi
   sleep 2
 done
 if [ "$OK" != "1" ]; then
-  echo "Error: la app no responde. Ver el detalle con:" >&2
+  echo "Error: la app no responde en https://$LOCAL:$HTTPS_PORT. Ver el detalle con:" >&2
   echo "  docker compose --env-file $ENV_FILE logs --tail 50 app" >&2
   exit 1
 fi
-echo "App en marcha (version $VERSION)."
 
-# 7. HTTPS y CA local de Caddy (se exporta para instalarla en las terminales; es publica, no es un secreto)
-CA_LOCAL="$CONF/ca-local.crt"
-if [ "$BIND" = "0.0.0.0" ]; then LOCAL="127.0.0.1"; else LOCAL="$BIND"; fi
-HTTPS_OK=0
-for _ in $(seq 1 15); do
-  if "${COMPOSE[@]}" cp caddy:/data/caddy/pki/authorities/local/root.crt "$CA_LOCAL" > /dev/null 2>&1 \
-      && curl -fsS --max-time 5 --cacert "$CA_LOCAL" --connect-to "$HOST:$HTTPS_PORT:$LOCAL:$HTTPS_PORT" \
-         "$SITIO/api/health" 2>/dev/null | grep -q "\"version\":\"$VERSION\""; then
-    HTTPS_OK=1
-    break
-  fi
-  sleep 2
-done
-if [ -f "$CA_LOCAL" ]; then chmod 644 "$CA_LOCAL"; fi
-if [ "$HTTPS_OK" = "1" ]; then
-  echo "HTTPS en marcha: $SITIO"
-else
-  echo "Aviso: el HTTPS todavia no responde en $SITIO." >&2
-  echo "Detalle: docker compose --env-file $ENV_FILE logs --tail 50 caddy" >&2
-fi
-
-# 8. Resumen
+# 7. Resumen
 USUARIOS="$("${COMPOSE[@]}" exec -T db psql -U jzbill -d jzbill_db -tAc "SELECT count(*) FROM usuarios" 2>/dev/null || echo 0)"
 echo ""
 echo "================================================================="
 echo "INSTALACION COMPLETADA - JZBill $VERSION (Docker)"
 echo "================================================================="
 echo "Pagina: $SITIO"
-echo "Certificado de la CA local de Caddy: $CA_LOCAL (cada terminal tiene que confiar en el una vez)."
+if [ -f "$TLS_DIR/.autofirmado" ]; then
+  echo "Certificado autofirmado: cada terminal tiene que confiar una vez en $TLS_DIR/cert.pem."
+fi
 if [ "$USUARIOS" = "0" ]; then
   echo ""
   echo "Token de configuracion inicial: $SETUP_TOKEN"
