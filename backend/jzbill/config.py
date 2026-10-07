@@ -48,7 +48,7 @@ DB_POOL_MAX = _entero("DB_POOL_MAX", 5)
 # Token de la configuracion inicial (alta del primer administrador). Lo genera el instalador.
 SETUP_TOKEN = os.getenv("SETUP_TOKEN", "")
 
-# Direccion publica con HTTPS del facturador (detras de Caddy).
+# Direccion publica con HTTPS del facturador.
 PUBLIC_URL = os.getenv("PUBLIC_URL", "").rstrip("/")
 
 # Proxies de confianza para la IP real (X-Forwarded-For). Un valor invalido corta el arranque.
