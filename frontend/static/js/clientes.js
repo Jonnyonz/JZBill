@@ -8,14 +8,27 @@ async function opcionesFiscales() {
     return { documentos: op.documentos, condiciones: op.condiciones };
 }
 
+// Lupa en SVG (sin emojis ni fuentes de iconos).
+function iconoLupa() {
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('aria-hidden', 'true');
+    const camino = document.createElementNS(ns, 'path');
+    for (const [k, v] of Object.entries({ d: 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-4.35-4.35', fill: 'none',
+        stroke: 'currentColor', 'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' })) camino.setAttribute(k, v);
+    svg.append(camino);
+    return svg;
+}
+
 // Formulario de alta o edicion. alGuardar(cliente) recibe el cliente guardado.
 function formularioCliente(fiscales, grupos, cliente, alGuardar, alCancelar) {
     const cuitDoc = fiscales.documentos.find(d => normalTexto(d.descripcion) === 'cuit');
-    const selDoc = el('select', { name: 'doc_tipo', required: true }, fiscales.documentos.map(d =>
+    const selDoc = el('select', { name: 'doc_tipo', required: true }, el('option', { value: '' }, 'Elegí el tipo'), fiscales.documentos.map(d =>
         el('option', { value: d.codigo, selected: cliente ? String(cliente.doc_tipo) === d.codigo : (cuitDoc && d.codigo === cuitDoc.codigo) }, d.descripcion)));
     const nro = el('input', { name: 'doc_nro', required: true, maxlength: 13, inputmode: 'numeric', value: cliente ? cliente.doc_nro : '' });
     const nombre = el('input', { name: 'nombre', required: true, maxlength: 200, value: cliente ? cliente.nombre : '' });
-    const selCondicion = el('select', { name: 'condicion_iva', required: true }, fiscales.condiciones.map(c =>
+    const selCondicion = el('select', { name: 'condicion_iva', required: true }, el('option', { value: '' }, 'Elegí la condición'), fiscales.condiciones.map(c =>
         el('option', { value: c.codigo, selected: cliente ? String(cliente.condicion_iva) === c.codigo : false }, c.descripcion)));
     const domicilio = el('input', { name: 'domicilio', maxlength: 300, value: cliente ? cliente.domicilio : '' });
     const email = el('input', { name: 'email', type: 'email', maxlength: 200, value: cliente ? cliente.email : '' });
@@ -26,16 +39,27 @@ function formularioCliente(fiscales, grupos, cliente, alGuardar, alCancelar) {
     const cancelar = el('button', { type: 'button', class: 'secundario' }, 'Cancelar');
     cancelar.addEventListener('click', () => alCancelar && alCancelar());
     const avisoArca = el('div', {});
-    const buscarArca = el('button', { type: 'button', class: 'secundario' }, 'Buscar en ARCA');
+    const buscarArca = el('button', { type: 'button', class: 'secundario boton-icono', title: 'Buscar en ARCA', 'aria-label': 'Buscar en ARCA' }, iconoLupa());
     buscarArca.addEventListener('click', async () => {
-        const datos = await conBoton(buscarArca, () => api('/api/padron/' + encodeURIComponent(nro.value.replace(/\D/g, ''))));
+        // Mientras ARCA responde, todo el formulario queda deshabilitado (fieldset nativo) y en gris.
+        campos.disabled = true;
+        vaciar(avisoArca).append(el('p', { class: 'aviso-form', role: 'status' }, 'Buscando en ARCA...'));
+        let datos;
+        try {
+            datos = await api('/api/padron/' + encodeURIComponent(nro.value.replace(/\D/g, '')));
+        } catch (e) {
+            mostrarMensaje(e.message, 'error');
+        } finally {
+            campos.disabled = sinParametros;
+            vaciar(avisoArca);
+        }
         if (!datos) return;
-        vaciar(avisoArca);
         if (datos.cliente_existente && !cliente) {
             avisoArca.append(el('p', { class: 'aviso-form error' }, 'Ese CUIT ya está cargado como cliente: buscalo en la lista.'));
             return;
         }
         if (datos.doc_tipo) selDoc.value = String(datos.doc_tipo);
+        if (!selDoc.value) mostrarMensaje('Elegí el tipo de documento: el de ARCA no está entre los parámetros fiscales.', 'error');
         if (datos.nombre) nombre.value = datos.nombre;
         if (datos.domicilio) domicilio.value = datos.domicilio;
         if (datos.condicion_sugerida) selCondicion.value = String(datos.condicion_sugerida);
@@ -52,15 +76,19 @@ function formularioCliente(fiscales, grupos, cliente, alGuardar, alCancelar) {
             datos.condicion_sugerida ? null : el('div', { class: 'sub' }, 'ARCA no permite deducir la condición frente al IVA con seguridad: elegila vos.'),
             ...datos.errores.map(e => el('div', { class: 'sub' }, 'ARCA: ' + e))));
     });
-    const form = el('form', { class: 'form-cliente' },
-        avisoArca,
+    // Sin parametros fiscales del modo actual no hay codigos de ARCA validos: el formulario queda bloqueado.
+    const sinParametros = !fiscales.documentos.length || !fiscales.condiciones.length;
+    const campos = el('fieldset', { disabled: sinParametros },
         el('div', { class: 'grilla-form' },
             el('label', {}, 'Tipo de documento', selDoc),
-            el('label', {}, 'Número', el('div', { class: 'fila-form' }, nro, buscarArca)),
+            el('label', {}, 'Número', el('div', { class: 'campo-lupa' }, nro, buscarArca)),
             el('label', {}, 'Nombre o razón social', nombre), el('label', {}, 'Condición frente al IVA', selCondicion),
             el('label', {}, 'Domicilio', domicilio), el('label', {}, 'Email', email), el('label', {}, 'Grupo', selGrupo)),
         cliente ? el('label', { class: 'casilla' }, activo, 'Activo') : null,
         el('div', { class: 'acciones' }, guardar, alCancelar ? cancelar : null));
+    const form = el('form', { class: 'form-cliente' },
+        sinParametros ? el('p', { class: 'aviso-form error' }, 'Faltan los parámetros fiscales de ARCA en este modo. Un administrador tiene que actualizarlos en Razones sociales, Conexión con ARCA.') : null,
+        avisoArca, campos);
     form._origen = 'manual';
     form._campos = { selDoc, nro, nombre, selCondicion, domicilio, avisoArca };
     form.addEventListener('submit', async (ev) => {

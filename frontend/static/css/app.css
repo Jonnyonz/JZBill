@@ -377,6 +377,12 @@ td.vacio { text-align: center; padding: 2rem 1rem; color: var(--text-muted); }
 .fila-form { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .fila-form > input { flex: 1; min-width: 200px; }
 .buscador-cliente { position: relative; margin-bottom: 1rem; }
+.form-cliente fieldset { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 1rem; }
+.form-cliente fieldset:disabled { opacity: 0.45; }
+.campo-lupa { display: flex; gap: 6px; }
+.campo-lupa input { flex: 1; min-width: 0; }
+button.boton-icono { padding: 0; width: 42px; flex: none; justify-content: center; }
+button.boton-icono svg { width: 18px; height: 18px; }
 .resultados-cliente { display: grid; gap: 4px; margin-top: 6px; }
 .opcion-cliente {
     justify-content: space-between; width: 100%; background: var(--bg-page); color: var(--text-primary);
