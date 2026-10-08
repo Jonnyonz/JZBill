@@ -85,6 +85,15 @@ def _item(vigentes: Optional[dict], tipo: str, codigo) -> Optional[dict]:
     return next((i for i in _items(vigentes, tipo) if i["codigo"] == str(codigo)), None)
 
 
+def clases(item: dict) -> list:
+    """Clases de comprobante de una condicion frente al IVA. ARCA manda Cmp_Clase como texto de hasta 5 caracteres
+    que puede juntar varias (por ejemplo "A/M/C"); se separa en cada una ("A", "M", "C", "ALEY", "49")."""
+    salida = set()
+    for valor in item["datos"].get("Cmp_Clase", []):
+        salida.update(p for p in "".join(c if c.isalnum() else " " for c in str(valor).upper()).split() if p)
+    return sorted(salida)
+
+
 def _fecha_arca(valor: str) -> Optional[date]:
     try:
         return date(int(valor[:4]), int(valor[4:6]), int(valor[6:8]))
@@ -134,7 +143,7 @@ async def opciones(ctx: dict = Depends(contexto_requerido), conn: asyncpg.Connec
         "parametros": vigentes is not None,
         "documentos": simple("TiposDoc"), "monedas": simple("TiposMonedas"), "conceptos": simple("TiposConcepto"),
         "condiciones": [{"codigo": i["codigo"], "descripcion": i["descripcion"],
-                         "clases": i["datos"].get("Cmp_Clase", [])} for i in _items(vigentes, "CondicionIvaReceptor")],
+                         "clases": clases(i)} for i in _items(vigentes, "CondicionIvaReceptor")],
         "asociables": [{"id": str(a["id"]), "nombre": a["nombre"], "letra": a["letra"], "punto_venta": a["punto_venta"],
                         "numero": a["numero"], "fecha": a["fecha"].isoformat(), "total": str(a["importe_total"]),
                         "moneda": a["moneda"]} for a in asociables if not es_nota(a["nombre"])],
@@ -201,7 +210,7 @@ async def emitir(data: ComprobanteNuevo, request: Request, ctx: dict = Depends(c
         if doc is None:
             raise HTTPException(400, "Tipo de documento del receptor desconocido para ARCA.")
         condicion = _item(vigentes, "CondicionIvaReceptor", data.receptor.condicion_iva)
-        if condicion is None or f["letra"] not in condicion["datos"].get("Cmp_Clase", []):
+        if condicion is None or f["letra"] not in clases(condicion):
             raise HTTPException(400, f"Esa condición frente al IVA del receptor no corresponde a un comprobante "
                                      f"{f['letra']} según ARCA.")
         if _item(vigentes, "TiposMonedas", data.moneda) is None:
