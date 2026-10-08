@@ -2,9 +2,21 @@
 
 Cambios de JZBill, del más nuevo al más viejo.
 
-## Sin publicar
+## 2026-10-08 - 0.4.0
 
 ### Agregado
+- Conexión con ARCA (WSAA y WSFEv1) con cliente propio, sin dependencias nuevas: firma CMS del pedido de acceso,
+  ticket guardado cifrado y reutilizado, reintentos según las reglas de ARCA (espera ante errores temporales,
+  detenido ante rechazos hasta corregirlos).
+- Pedido de certificado (CSR) generado en el servidor: la clave privada queda cifrada y nunca sale. Carga del
+  certificado que devuelve ARCA contra el pedido, y descarte de pedidos sin usar.
+- Tarjeta "Conexión con ARCA" por razón social y modo: estado de los servidores, prueba de conexión, desbloqueo y
+  actualización de los parámetros fiscales.
+- Parámetros fiscales leídos de ARCA (tipos de comprobante, IVA, monedas, documentos, tributos, opcionales,
+  condición frente al IVA del receptor) y guardados como datos con versión, que no se modifican.
+- Pedido de CAE (`FECAESolicitar`), consulta de comprobantes (`FECompConsultar`) y cotización de moneda.
+  Herramienta de prueba solo para homologación: `python -m jzbill.arca.prueba_cae`. Probado contra ARCA
+  homologación con CAE aprobado para factura C, nota de crédito C, nota de débito C y factura C en dólares.
 - Instalación alternativa con Docker (`install-docker.sh`, `compose.yml`, `Dockerfile`): app y PostgreSQL. La
   app corre sin privilegios y con sistema de archivos de solo lectura, la base en una red sin salida a internet,
   y la imagen lleva solo el código (lista blanca en `.dockerignore`).
@@ -13,6 +25,15 @@ Cambios de JZBill, del más nuevo al más viejo.
 - Sin Caddy: la app sirve HTTPS directamente en el puerto 9443 (nativa y Docker). Si no hay certificado, el
   instalador genera uno autofirmado para la IP o el nombre; se puede reemplazar por uno propio. Las
   instalaciones anteriores quedan con su bloque de Caddy sin uso: borrarlo a mano del Caddyfile.
+- Las páginas y archivos de la interfaz se revalidan siempre en el navegador: después de una actualización ya no
+  queda el JavaScript viejo en caché.
+
+### Corregido
+- Las tarjetas de la ficha de la razón social ya no se duplican al tocar dos botones seguidos.
+
+### Pendiente
+- Comprobantes A y B: necesitan un emisor responsable inscripto para probarlos en homologación.
+- Instalación nativa sin Caddy: falta probarla en un servidor (la de Docker está probada).
 
 ## 2026-10-05 - 0.3.0
 
