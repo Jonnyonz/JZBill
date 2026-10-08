@@ -15,7 +15,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 COPY requirements.txt .
-RUN pip install --require-hashes --only-binary=:all: -r requirements.txt
+# setuptools y wheel vienen con la imagen base y la app no los usa: fuera (menos superficie, pip-audit limpio).
+RUN pip install --require-hashes --only-binary=:all: -r requirements.txt \
+    && pip uninstall -y setuptools wheel
 
 COPY backend/jzbill backend/jzbill
 COPY db db
