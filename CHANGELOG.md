@@ -2,6 +2,39 @@
 
 Cambios de JZBill, del más nuevo al más viejo.
 
+## 2026-10-08 - 0.5.0
+
+### Agregado
+- Facturación (Fase 3): pantalla Facturar con tipo de comprobante, concepto, moneda, condiciones de venta,
+  receptor (consumidor final o cargado a mano) y líneas con descripción libre; listado de Comprobantes.
+- Formularios por punto de venta (electrónicos con tipo, nombre y letra tomados de ARCA, o no electrónicos con
+  numeración propia) y contadores separados por modo, sincronizables con el último número autorizado en ARCA.
+- Emisión de comprobantes C con CAE: numeración con bloqueo (varias cajas a la vez sin repetir ni saltear), el
+  rechazo de ARCA libera el número, se frena si la numeración de ARCA no coincide, y si se pierde la respuesta se
+  consulta a ARCA antes de decidir. Notas de crédito y débito enlazadas a su factura. Moneda extranjera con la
+  cotización de ARCA. Condición del receptor validada contra la letra con los datos de ARCA.
+- Comprobante impreso en una hoja A4 (imprimir o guardar como PDF) según la RG 1415 Anexo II: emisor con leyenda
+  de su condición, ingresos brutos e inicio de actividades, letra con su código, receptor ("A CONSUMIDOR FINAL"),
+  condiciones de venta, C.A.E. y vencimiento, y QR de ARCA de 50 x 50 mm. En modo prueba, leyenda discreta de
+  homologación sin validez fiscal.
+- Razón social: ingresos brutos e inicio de actividades. El comprobante guarda una copia de los datos del emisor al
+  emitir (lo impreso no cambia si cambian después).
+- Dependencia nueva: segno (QR), aprobada.
+
+### Cambiado
+- Interfaz con el sistema visual de JZTech Suite (Tracker360 y JZPass): barra lateral de íconos, tarjetas,
+  tablas, etiquetas, tema claro u oscuro con botón, Salir en la barra lateral y menú tipo cajón en celular.
+- Los comprobantes emitidos no se modifican ni se borran: lo impide la base de datos.
+
+### Corregido
+- Las fechas de calendario (por ejemplo la de un comprobante) ya no se muestran un día antes.
+- Un contexto elegido antes de que existiera el punto de venta se completa solo cuando aparece uno.
+- La condición frente al IVA del receptor admite las clases juntas que manda ARCA (por ejemplo "B/C").
+
+### Pendiente
+- Comprobantes A y B (IVA discriminado, Transparencia Fiscal, leyenda de la Ley 27.618): necesitan un emisor
+  responsable inscripto para probarlos.
+
 ## 2026-10-08 - 0.4.0
 
 ### Agregado
