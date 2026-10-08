@@ -108,7 +108,8 @@ function detalleRazon(contenedor, rs) {
 }
 
 async function puntosVenta(tarjeta, rs) {
-    vaciar(tarjeta).append(el('h2', {}, 'Puntos de venta'));
+    const vigente = redibujar(tarjeta);
+    tarjeta.append(el('h2', {}, 'Puntos de venta'));
     let lista;
     try {
         lista = await api(`/api/razones-sociales/${encodeURIComponent(rs.id)}/puntos-venta`);
@@ -116,6 +117,7 @@ async function puntosVenta(tarjeta, rs) {
         mostrarMensaje(e.message, 'error');
         return;
     }
+    if (!vigente()) return;
     const cuerpo = el('tbody');
     for (const pv of lista) {
         const boton = el('button', { type: 'button', class: 'secundario' }, pv.activo ? 'Desactivar' : 'Activar');
@@ -149,7 +151,7 @@ async function puntosVenta(tarjeta, rs) {
 }
 
 async function certificados(tarjeta, rs, modo) {
-    vaciar(tarjeta);
+    const vigente = redibujar(tarjeta);
     const selector = el('select', { 'aria-label': 'Modo' },
         el('option', { value: 'empresa', selected: modo === 'empresa' }, 'Empresa (producción de ARCA)'),
         el('option', { value: 'prueba', selected: modo === 'prueba' }, 'Prueba (homologación)'));
@@ -162,6 +164,7 @@ async function certificados(tarjeta, rs, modo) {
         mostrarMensaje(e.message, 'error');
         return;
     }
+    if (!vigente()) return;
     const cuerpo = el('tbody');
     for (const c of lista) {
         const vence = c.dias_para_vencer < 30 ? 'aviso' : 'ok';
@@ -259,7 +262,7 @@ async function pedidosCertificado(tarjeta, rs, modo) {
 
 // Conexion con ARCA: estado de los servidores y del ticket, prueba de conexion, desbloqueo y parametros fiscales.
 async function conexionArca(tarjeta, rs, modo) {
-    vaciar(tarjeta);
+    const vigente = redibujar(tarjeta);
     tarjeta.dataset.modo = modo;
     const base = `/api/razones-sociales/${encodeURIComponent(rs.id)}/arca`;
     const selector = el('select', { 'aria-label': 'Modo' },
@@ -274,6 +277,7 @@ async function conexionArca(tarjeta, rs, modo) {
         mostrarMensaje(err.message, 'error');
         return;
     }
+    if (!vigente()) return;
     const srv = e.servidores || {};
     const servidoresOk = srv.aplicacion === 'OK' && srv.base === 'OK' && srv.autenticacion === 'OK';
     tarjeta.append(el('dl', { class: 'datos' },

@@ -61,6 +61,14 @@ function vaciar(nodo) {
     return nodo;
 }
 
+// Redibujo de una tarjeta que espera a la API: vacia y devuelve vigente(). Si mientras espera empieza otro
+// redibujo (dos botones seguidos), vigente() da false y el anterior no agrega nada (no se duplica).
+function redibujar(nodo) {
+    const n = (nodo._dibujo = (nodo._dibujo || 0) + 1);
+    vaciar(nodo);
+    return () => nodo._dibujo === n;
+}
+
 // Fechas: se guardan en UTC y se muestran en hora de Argentina.
 function fechaHora(iso) {
     return new Date(iso).toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', dateStyle: 'short', timeStyle: 'short' });
