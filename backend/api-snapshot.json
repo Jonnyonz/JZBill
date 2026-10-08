@@ -171,6 +171,13 @@
       "path:razon_social_id"
     ]
   },
+  "POST /api/razones-sociales/{razon_social_id}/certificados/pedidos/{pedido_id}/descartar": {
+    "cuerpo": false,
+    "params": [
+      "path:pedido_id",
+      "path:razon_social_id"
+    ]
+  },
   "POST /api/razones-sociales/{razon_social_id}/puntos-venta": {
     "cuerpo": true,
     "params": [

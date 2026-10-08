@@ -244,6 +244,13 @@ async function pedidosCertificado(tarjeta, rs, modo) {
                 { method: 'POST', body: { certificado_pem: await archivo.text() } }));
             if (r) { mostrarMensaje('Certificado cargado y en uso.', 'ok'); certificados(tarjeta, rs, modo); refrescarArca(); }
         });
+        const descartar = el('button', { type: 'button', class: 'secundario' }, 'Descartar pedido');
+        descartar.addEventListener('click', async () => {
+            if (!window.confirm(`Se descarta el pedido ${p.alias}: si ARCA ya emitió un certificado para este CSR, no se va a poder cargar. ¿Continuar?`)) return;
+            const r = await conBoton(descartar, () => api(`${base}/${encodeURIComponent(p.id)}/descartar`, { method: 'POST', body: {} }));
+            if (r) { mostrarMensaje('Pedido descartado.', 'ok'); certificados(tarjeta, rs, modo); }
+        });
+        formCert.querySelector('.acciones').append(descartar);
         zona.append(el('div', { class: 'accesos-rs' },
             el('div', {}, el('strong', {}, p.alias), ' ', el('span', { class: 'sub' }, 'pedido del ' + fechaHora(p.creado_en))),
             csr, formCert));

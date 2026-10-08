@@ -225,6 +225,23 @@ async def ver_pedido(razon_social_id: str, pedido_id: str, admin: dict = Depends
     return _pedido_salida(await _pedido_o_404(conn, rs, pedido_id), con_csr=True)
 
 
+@router.post("/pedidos/{pedido_id}/descartar")
+async def descartar_pedido(razon_social_id: str, pedido_id: str, request: Request, admin: dict = Depends(require_admin),
+                           conn: asyncpg.Connection = Depends(get_conn)):
+    """Borra un pedido sin usar, con su clave: el CSR ya no sirve (si ARCA emitio un certificado para el, no se
+    va a poder cargar). Los pedidos usados quedan como historial."""
+    rs = await razon_social_visible(conn, admin, razon_social_id)
+    pedido = await _pedido_o_404(conn, rs, pedido_id)
+    if pedido["usado_en"] is not None:
+        raise HTTPException(409, "Ese pedido ya se usó: queda como historial.")
+    async with conn.transaction():
+        await conn.execute("DELETE FROM certificado_pedidos WHERE id = $1 AND usado_en IS NULL", pedido["id"])
+        await registrar(conn, admin["id"], admin["usuario"], "CERTIFICADO_PEDIDO",
+                        f"Pedido de certificado (CSR) {pedido['alias']} descartado, modo {pedido['modo']}.",
+                        client_ip(request), rs["id"])
+    return {"ok": True}
+
+
 @router.post("/pedidos/{pedido_id}/certificado", status_code=201)
 async def cargar_certificado_del_pedido(razon_social_id: str, pedido_id: str, data: CertificadoDelPedido,
                                         request: Request, admin: dict = Depends(require_admin),
