@@ -5,14 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>JZBill</title>
     <link rel="stylesheet" href="/static/css/app.css?v=0.4.0">
+    <script src="/static/js/tema.js?v=0.4.0"></script>
 </head>
 <body class="centrado">
+    <div class="acento-superior"></div>
+    <button class="tema-flotante" type="button" data-alternar-tema aria-label="Tema claro u oscuro" title="Tema claro u oscuro">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
     <main class="tarjeta tarjeta-chica">
         <header class="marca">
             <svg class="icono-marca" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l3 3v15l-2-1.2-2 1.2-2-1.2-2 1.2-2-1.2-2 1.2V3zM9 9h6M9 13h6M9 17h3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <div>
                 <h1>JZBill</h1>
-                <p class="sub">Facturación electrónica</p>
+                <p class="sub">Facturación electrónica ARCA</p>
             </div>
         </header>
 
@@ -33,6 +38,7 @@
 
         <p id="mensaje" class="mensaje" role="alert"></p>
     </main>
+    <footer class="pie-suite">JZBill, parte de JZTech Suite</footer>
     <script src="/static/js/api.js?v=0.4.0"></script>
     <script src="/static/js/index.js?v=0.4.0"></script>
 </body>

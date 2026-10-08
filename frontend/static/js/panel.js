@@ -95,8 +95,7 @@ function armarMenu() {
     }
     menu.append(el('hr'),
         el('button', { type: 'button', class: 'secundario', onclick: () => { cerrarMenu(); location.hash = '#cuenta'; } }, 'Cambiar contraseña'),
-        el('button', { type: 'button', class: 'secundario', onclick: cerrarTodas }, 'Cerrar sesión en todos los dispositivos'),
-        el('button', { type: 'button', onclick: salir }, 'Salir'));
+        el('button', { type: 'button', class: 'secundario', onclick: cerrarTodas }, 'Cerrar sesión en todos los dispositivos'));
 }
 
 function abrirMenu() {
@@ -118,6 +117,13 @@ async function cerrarTodas() {
     if (!window.confirm('Se va a cerrar la sesión en todos los dispositivos, incluido este. ¿Continuar?')) return;
     try { await api('/api/auth/sesiones/cerrar', { method: 'POST' }); } catch (e) { /* se va igual */ }
     window.location.href = '/';
+}
+
+// --- Barra lateral en celular (cajon) ---
+function alternarLateral(abrir) {
+    document.getElementById('lateral').classList.toggle('abierta', abrir);
+    document.getElementById('fondo-lateral').classList.toggle('abierta', abrir);
+    document.getElementById('abrir-lateral').setAttribute('aria-expanded', abrir ? 'true' : 'false');
 }
 
 // --- Vistas ---
@@ -188,7 +194,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('avatar').textContent = iniciales(Panel.yo.nombre || Panel.yo.usuario);
     document.getElementById('avatar-nombre').textContent = Panel.yo.nombre || Panel.yo.usuario;
     if (esAdmin()) document.querySelectorAll('.nav-btn[data-admin]').forEach(b => b.classList.remove('oculto'));
-    document.querySelectorAll('.nav-btn[data-vista]').forEach(b => b.addEventListener('click', () => { location.hash = '#' + b.dataset.vista; }));
+    document.querySelectorAll('.nav-btn[data-vista]').forEach(b => b.addEventListener('click', () => {
+        location.hash = '#' + b.dataset.vista;
+        alternarLateral(false);
+    }));
+    document.getElementById('salir-btn').addEventListener('click', salir);
+    document.getElementById('abrir-lateral').addEventListener('click', () =>
+        alternarLateral(!document.getElementById('lateral').classList.contains('abierta')));
+    document.getElementById('fondo-lateral').addEventListener('click', () => alternarLateral(false));
 
     document.getElementById('avatar-btn').addEventListener('click', (ev) => {
         ev.stopPropagation();
@@ -196,7 +209,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     document.getElementById('menu-avatar').addEventListener('click', (ev) => ev.stopPropagation());
     document.addEventListener('click', cerrarMenu);
-    document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') cerrarMenu(); });
+    document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { cerrarMenu(); alternarLateral(false); } });
 
     prepararCuenta();
     try {

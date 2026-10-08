@@ -5,11 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>JZBill</title>
     <link rel="stylesheet" href="/static/css/app.css?v=0.4.0">
+    <script src="/static/js/tema.js?v=0.4.0"></script>
 </head>
 <body class="panel">
     <div class="acento-superior"></div>
 
-    <nav class="lateral" aria-label="Secciones">
+    <div class="barra-movil">
+        <button id="abrir-lateral" type="button" aria-label="Menú" aria-controls="lateral" aria-expanded="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h18M3 6h18M3 18h18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+        <svg class="icono-marca" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l3 3v15l-2-1.2-2 1.2-2-1.2-2 1.2-2-1.2-2 1.2V3zM9 9h6M9 13h6M9 17h3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <strong>JZBill</strong>
+    </div>
+    <div id="fondo-lateral" class="fondo-lateral"></div>
+
+    <nav id="lateral" class="lateral" aria-label="Secciones">
         <div class="marca">
             <svg class="icono-marca" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l3 3v15l-2-1.2-2 1.2-2-1.2-2 1.2-2-1.2-2 1.2V3zM9 9h6M9 13h6M9 17h3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <h1>JZBill</h1>
@@ -35,9 +45,17 @@
             <span class="etiqueta-nav">Auditoría</span>
         </button>
         <div class="lateral-abajo">
+            <button class="nav-btn" type="button" data-alternar-tema title="Tema claro u oscuro">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span class="etiqueta-nav">Tema claro u oscuro</span>
+            </button>
             <button id="avatar-btn" class="nav-btn avatar-btn" type="button" aria-haspopup="true" aria-expanded="false" title="Cuenta y división empresa">
                 <span id="avatar" class="avatar"></span>
                 <span id="avatar-nombre" class="etiqueta-nav"></span>
+            </button>
+            <button id="salir-btn" class="nav-btn salir" type="button" title="Salir">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span class="etiqueta-nav">Salir</span>
             </button>
         </div>
     </nav>
