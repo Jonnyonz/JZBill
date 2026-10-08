@@ -42,7 +42,7 @@ function formularioCliente(fiscales, grupos, cliente, alGuardar, alCancelar) {
     const buscarArca = el('button', { type: 'button', class: 'secundario boton-icono', title: 'Buscar en ARCA', 'aria-label': 'Buscar en ARCA' }, iconoLupa());
     buscarArca.addEventListener('click', async () => {
         // Mientras ARCA responde, todo el formulario queda deshabilitado (fieldset nativo) y en gris.
-        campos.disabled = true;
+        campos.disabled = guardar.disabled = true;
         vaciar(avisoArca).append(el('p', { class: 'aviso-form', role: 'status' }, 'Buscando en ARCA...'));
         let datos;
         try {
@@ -50,7 +50,7 @@ function formularioCliente(fiscales, grupos, cliente, alGuardar, alCancelar) {
         } catch (e) {
             mostrarMensaje(e.message, 'error');
         } finally {
-            campos.disabled = sinParametros;
+            campos.disabled = guardar.disabled = sinParametros;
             vaciar(avisoArca);
         }
         if (!datos) return;
@@ -84,11 +84,12 @@ function formularioCliente(fiscales, grupos, cliente, alGuardar, alCancelar) {
             el('label', {}, 'Número', el('div', { class: 'campo-lupa' }, nro, buscarArca)),
             el('label', {}, 'Nombre o razón social', nombre), el('label', {}, 'Condición frente al IVA', selCondicion),
             el('label', {}, 'Domicilio', domicilio), el('label', {}, 'Email', email), el('label', {}, 'Grupo', selGrupo)),
-        cliente ? el('label', { class: 'casilla' }, activo, 'Activo') : null,
-        el('div', { class: 'acciones' }, guardar, alCancelar ? cancelar : null));
+        cliente ? el('label', { class: 'casilla' }, activo, 'Activo') : null);
+    // Cancelar queda fuera del fieldset: siempre se puede cerrar el formulario.
+    guardar.disabled = sinParametros;
     const form = el('form', { class: 'form-cliente' },
         sinParametros ? el('p', { class: 'aviso-form error' }, 'Faltan los parámetros fiscales de ARCA en este modo. Un administrador tiene que actualizarlos en Razones sociales, Conexión con ARCA.') : null,
-        avisoArca, campos);
+        avisoArca, campos, el('div', { class: 'acciones' }, guardar, alCancelar ? cancelar : null));
     form._origen = 'manual';
     form._campos = { selDoc, nro, nombre, selCondicion, domicilio, avisoArca };
     form.addEventListener('submit', async (ev) => {
