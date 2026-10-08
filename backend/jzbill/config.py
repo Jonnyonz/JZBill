@@ -83,10 +83,13 @@ ARCA_URLS = {
     "prueba": {
         "wsaa": os.getenv("ARCA_WSAA_URL_PRUEBA", "https://wsaahomo.afip.gov.ar/ws/services/LoginCms"),
         "wsfe": os.getenv("ARCA_WSFE_URL_PRUEBA", "https://wswhomo.afip.gov.ar/wsfev1/service.asmx"),
+        # Constancia de inscripcion (ex padron A5). El manual v4.1 cita awshomo.arca.gob.ar, que todavia no resuelve.
+        "padron": os.getenv("ARCA_PADRON_URL_PRUEBA", "https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA5"),
     },
     "empresa": {
         "wsaa": os.getenv("ARCA_WSAA_URL_EMPRESA", "https://wsaa.afip.gov.ar/ws/services/LoginCms"),
         "wsfe": os.getenv("ARCA_WSFE_URL_EMPRESA", "https://servicios1.afip.gov.ar/wsfev1/service.asmx"),
+        "padron": os.getenv("ARCA_PADRON_URL_EMPRESA", "https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA5"),
     },
 }
 # Segundos maximos de espera por cada llamada a ARCA (conexion + respuesta).
