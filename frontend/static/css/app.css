@@ -373,6 +373,28 @@ form.facturacion { gap: 1.5rem; }
 .tarjeta.emitido { border-left: 4px solid var(--success); }
 td.vacio { text-align: center; padding: 2rem 1rem; color: var(--text-muted); }
 
+/* ===== Clientes ===== */
+.fila-form { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.fila-form > input { flex: 1; min-width: 200px; }
+.buscador-cliente { position: relative; margin-bottom: 1rem; }
+.resultados-cliente { display: grid; gap: 4px; margin-top: 6px; }
+.opcion-cliente {
+    justify-content: space-between; width: 100%; background: var(--bg-page); color: var(--text-primary);
+    border: 1px solid var(--border); box-shadow: none; font-weight: 500; padding: 0.6rem 0.9rem;
+}
+.opcion-cliente:hover { background: rgba(41, 98, 255, 0.08); transform: none; box-shadow: none; }
+.cliente-elegido {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 1rem;
+    padding: 0.6rem 0.9rem; border: 1px solid var(--accent); border-radius: 8px; background: rgba(41, 98, 255, 0.05);
+}
+.alta-rapida { border: 1px dashed var(--accent); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
+.alta-rapida h3 { margin-bottom: 0.8rem; }
+.aviso-form {
+    display: grid; gap: 4px; padding: 0.7rem 0.9rem; margin-bottom: 0.8rem; border-radius: 8px;
+    border-left: 4px solid var(--accent); background: rgba(41, 98, 255, 0.06); font-size: 0.88rem;
+}
+.aviso-form.error { border-left-color: var(--danger); background: rgba(213, 0, 0, 0.06); }
+
 /* Barra de celular y fondo del menu desplegado (solo en pantallas chicas). */
 .barra-movil, .fondo-lateral { display: none; }
 

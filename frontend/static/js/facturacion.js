@@ -107,6 +107,57 @@ async function vistaFacturar(contenedor) {
     const selVenta = el('select', {}, ['Contado', 'Cuenta corriente', 'Tarjeta de débito', 'Tarjeta de crédito',
         'Transferencia', 'Cheque', 'Otra'].map(v => el('option', { value: v }, v)));
     const selCondicion = el('select', {});
+    let clienteId = null;
+    const buscadorCliente = el('input', { type: 'search', placeholder: 'Buscar cliente por nombre o documento', 'aria-label': 'Buscar cliente', maxlength: 100 });
+    const resultados = el('div', { class: 'resultados-cliente' });
+    const elegido = el('div', {});
+    const zonaNuevo = el('div', {});
+    const crearCliente = el('button', { type: 'button', class: 'secundario' }, 'Crear cliente nuevo');
+
+    function usarCliente(c) {
+        clienteId = c.id;
+        selDoc.value = String(c.doc_tipo);
+        nroDoc.value = c.doc_nro;
+        nombre.value = c.nombre;
+        domicilio.value = c.domicilio;
+        if ([...selCondicion.options].some(o => o.value === String(c.condicion_iva))) selCondicion.value = String(c.condicion_iva);
+        else mostrarMensaje('La condición frente al IVA del cliente no corresponde a este tipo de comprobante.', 'error');
+        vaciar(resultados);
+        buscadorCliente.value = '';
+        const quitar = el('button', { type: 'button', class: 'secundario' }, 'Quitar');
+        quitar.addEventListener('click', () => {
+            clienteId = null; vaciar(elegido);
+            nroDoc.value = '0'; nombre.value = ''; domicilio.value = '';
+            if (docCF) selDoc.value = '99';
+            actualizarCabecera();
+        });
+        vaciar(elegido).append(el('div', { class: 'cliente-elegido' }, el('span', {}, 'Cliente: ', el('strong', {}, c.nombre)), quitar));
+    }
+
+    let esperaCliente = null;
+    buscadorCliente.addEventListener('input', () => {
+        clearTimeout(esperaCliente);
+        const texto = buscadorCliente.value.trim();
+        if (texto.length < 2) { vaciar(resultados); return; }
+        esperaCliente = setTimeout(async () => {
+            let lista = [];
+            try { lista = await api('/api/clientes?limite=8&q=' + encodeURIComponent(texto)); } catch (e) { mostrarMensaje(e.message, 'error'); }
+            vaciar(resultados).append(...(lista.length ? lista.map(c => {
+                const b = el('button', { type: 'button', class: 'opcion-cliente' }, el('strong', {}, c.nombre), el('span', { class: 'sub mono' }, c.doc_formateado));
+                b.addEventListener('click', () => usarCliente(c));
+                return b;
+            }) : [el('p', { class: 'ayuda' }, 'Sin resultados. Podés crearlo con "Crear cliente nuevo".')]));
+        }, 250);
+    });
+
+    crearCliente.addEventListener('click', async () => {
+        if (zonaNuevo.firstChild) { vaciar(zonaNuevo); return; }
+        let grupos = [];
+        try { grupos = await api('/api/grupos-clientes'); } catch (e) { /* sin grupos */ }
+        const form = formularioCliente({ documentos: op.documentos, condiciones: op.condiciones }, grupos, null,
+            c => { vaciar(zonaNuevo); usarCliente(c); }, () => vaciar(zonaNuevo));
+        vaciar(zonaNuevo).append(el('div', { class: 'alta-rapida' }, el('h3', {}, 'Cliente nuevo'), form));
+    });
 
     // --- Lineas ---
     const cuerpoLineas = el('tbody');
@@ -174,7 +225,10 @@ async function vistaFacturar(contenedor) {
                 el('label', {}, 'Tipo de comprobante', selFormulario), el('label', {}, 'Concepto', selConcepto),
                 el('label', {}, 'Moneda', selMoneda), el('label', {}, 'Condiciones de venta', selVenta), campoAsociado),
             campoServicio),
-        el('div', { class: 'tarjeta' }, el('h2', {}, 'Receptor'),
+        el('div', { class: 'tarjeta' },
+            el('div', { class: 'titulo-tarjeta' }, el('h2', {}, 'Receptor'), crearCliente),
+            el('div', { class: 'buscador-cliente' }, buscadorCliente, resultados),
+            elegido, zonaNuevo,
             el('div', { class: 'grilla-form' },
                 el('label', {}, 'Tipo de documento', selDoc), el('label', {}, 'Número', nroDoc),
                 el('label', {}, 'Nombre o razón social', nombre), el('label', {}, 'Condición frente al IVA', selCondicion),
@@ -211,6 +265,7 @@ async function vistaFacturar(contenedor) {
                         condicion_iva: Number(selCondicion.value || 0) }
         };
         if (f.es_nota) cuerpo.asociado_id = selAsociado.value || null;
+        if (clienteId) cuerpo.cliente_id = clienteId;
         if (['2', '3'].includes(selConcepto.value)) {
             cuerpo.servicio_desde = desde.value || null; cuerpo.servicio_hasta = hasta.value || null;
             cuerpo.vencimiento_pago = vence.value || null;
