@@ -108,8 +108,10 @@ function detalleRazon(contenedor, rs) {
     puntosVenta(tarjetaPv, rs);
     certificados(tarjetaCert, rs, 'empresa');
     const tarjetaArca = el('div', { class: 'tarjeta' });
-    conexionArca(tarjetaArca, rs, 'prueba');
-    refrescarArca = () => conexionArca(tarjetaArca, rs, tarjetaArca.dataset.modo || 'prueba');
+    // Arranca en el modo del avatar (si es esta razon social); antes arrancaba siempre en Prueba.
+    const modoActual = Panel.contexto && Panel.contexto.razon_social_id === rs.id ? Panel.contexto.modo : 'prueba';
+    conexionArca(tarjetaArca, rs, modoActual);
+    refrescarArca = () => conexionArca(tarjetaArca, rs, tarjetaArca.dataset.modo || modoActual);
     const tarjetaFormularios = el('div', { class: 'tarjeta' });
     formularios(tarjetaFormularios, rs);
     refrescarFormularios = () => formularios(tarjetaFormularios, rs);
