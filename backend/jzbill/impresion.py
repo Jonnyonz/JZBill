@@ -114,18 +114,17 @@ async def imprimir(comprobante_id: str, ctx: dict = Depends(contexto_requerido),
     moneda = ""
     if c["moneda"] != "PES":
         moneda = f"<p>Moneda: {e(c['moneda'])}. Tipo de cambio utilizado: {e(_cantidad(c['cotizacion']))}.</p>"
+    # Modo prueba: leyenda discreta junto a la autorizacion (decision de Jonny 2026-10-08), siempre presente.
+    prueba = "<p class=\"leyenda-prueba\">Homologación ARCA, sin validez fiscal.</p>" if c["modo"] == "prueba" else ""
     if c["electronico"]:
         qr = segno.make(texto_qr(rs["cuit"], c["fecha"], c["punto_venta"], c["codigo_arca"], c["numero"],
                                  c["importe_total"], c["moneda"], c["cotizacion"], c["receptor_doc_tipo"],
                                  c["receptor_doc_nro"], c["cae"]), error="m")
-        pie = (f"<div class=\"qr\">{qr.svg_inline(scale=3, border=2, title='Código QR de ARCA')}</div>"
+        pie = (f"<div class=\"qr\">{qr.svg_inline(scale=4, border=2, title='Código QR de ARCA')}</div>"
                f"<div class=\"autorizacion\"><p class=\"cae\">C.A.E. N° <span class=\"mono\">{e(c['cae'])}</span></p>"
-               f"<p class=\"cae\">Fecha Vto.: {_fecha(c['cae_vencimiento'])}</p></div>")
+               f"<p class=\"cae\">Fecha Vto.: {_fecha(c['cae_vencimiento'])}</p>{prueba}</div>")
     else:
-        pie = "<div><p class=\"autorizado\">Documento no válido como factura.</p></div>"
-    prueba = ""
-    if c["modo"] == "prueba":
-        prueba = "<p class=\"aviso-prueba\">Comprobante de PRUEBA (homologación de ARCA): sin validez fiscal.</p>"
+        pie = f"<div class=\"autorizacion\"><p class=\"autorizado\">Documento no válido como factura.</p>{prueba}</div>"
     fantasia = f"<h2>{e(rs['nombre_fantasia'])}</h2>" if rs["nombre_fantasia"] else ""
     datos_derecha = [f"<p>N.º <span class=\"mono\">{numero}</span></p>",
                      f"<p>Fecha de emisión: {_fecha(c['fecha'])}</p>",
@@ -147,7 +146,6 @@ async def imprimir(comprobante_id: str, ctx: dict = Depends(contexto_requerido),
 <body>
 <div class="barra-impresion"><button id="imprimir" type="button">Imprimir o guardar como PDF</button></div>
 <article class="comprobante">
-{prueba}
 <header class="cabecera">
 <div class="emisor">
 {fantasia}
@@ -165,10 +163,12 @@ async def imprimir(comprobante_id: str, ctx: dict = Depends(contexto_requerido),
 {"".join(receptor)}
 <p>Concepto: {e(concepto)}. Condiciones de venta: {e(c['condicion_venta'])}.</p>
 </section>
+<section class="detalle">
 <table class="lineas">
 <thead><tr><th>Descripción</th><th class="num">Cantidad</th><th class="num">Precio unitario</th><th class="num">Importe</th></tr></thead>
 <tbody>{filas}</tbody>
 </table>
+</section>
 <section class="totales">
 {moneda}
 <p class="total">Total: {e(c['moneda'])} {_importe(c['importe_total'])}</p>
