@@ -29,7 +29,9 @@ async function vistaRazones(contenedor, elegidaId) {
             el('label', {}, 'Nombre legal', el('input', { name: 'nombre_legal', required: true, maxlength: 200 })),
             el('label', {}, 'Nombre de fantasía', el('input', { name: 'nombre_fantasia', maxlength: 200 })),
             el('label', {}, 'Condición frente al IVA', selectCondicion('responsable_inscripto')),
-            el('label', {}, 'Domicilio', el('input', { name: 'domicilio', maxlength: 300 }))),
+            el('label', {}, 'Domicilio comercial', el('input', { name: 'domicilio', maxlength: 300 })),
+            el('label', {}, 'Ingresos brutos (número o condición)', el('input', { name: 'ingresos_brutos', maxlength: 40, placeholder: 'Número, Convenio Multilateral o No contribuyente' })),
+            el('label', {}, 'Inicio de actividades', el('input', { name: 'inicio_actividades', type: 'date' }))),
         el('label', { class: 'casilla' }, el('input', { type: 'checkbox', name: 'regimen_arba_bsas' }),
             'Percibe o retiene ingresos brutos de Buenos Aires (régimen especial ARBA)'),
         el('div', { class: 'acciones' }, el('button', { type: 'submit' }, 'Crear razón social')));
@@ -38,7 +40,8 @@ async function vistaRazones(contenedor, elegidaId) {
         const f = formNueva.elements;
         const nueva = await conBoton(formNueva.querySelector('button'), () => api('/api/razones-sociales', { method: 'POST', body: {
             cuit: f.cuit.value, nombre_legal: f.nombre_legal.value, nombre_fantasia: f.nombre_fantasia.value,
-            condicion_iva: f.condicion_iva.value, domicilio: f.domicilio.value, regimen_arba_bsas: f.regimen_arba_bsas.checked } }));
+            condicion_iva: f.condicion_iva.value, domicilio: f.domicilio.value, regimen_arba_bsas: f.regimen_arba_bsas.checked,
+            ingresos_brutos: f.ingresos_brutos.value, inicio_actividades: f.inicio_actividades.value || null } }));
         if (nueva) {
             mostrarMensaje('Razón social creada.', 'ok');
             await cargarContexto();
@@ -77,10 +80,13 @@ function detalleRazon(contenedor, rs) {
             el('label', {}, 'Nombre legal', el('input', { name: 'nombre_legal', required: true, maxlength: 200, value: rs.nombre_legal })),
             el('label', {}, 'Nombre de fantasía', el('input', { name: 'nombre_fantasia', maxlength: 200, value: rs.nombre_fantasia })),
             el('label', {}, 'Condición frente al IVA', selectCondicion(rs.condicion_iva)),
-            el('label', {}, 'Domicilio', el('input', { name: 'domicilio', maxlength: 300, value: rs.domicilio })),
+            el('label', {}, 'Domicilio comercial', el('input', { name: 'domicilio', maxlength: 300, value: rs.domicilio })),
+            el('label', {}, 'Ingresos brutos (número o condición)', el('input', { name: 'ingresos_brutos', maxlength: 40, value: rs.ingresos_brutos, placeholder: 'Número, Convenio Multilateral o No contribuyente' })),
+            el('label', {}, 'Inicio de actividades', el('input', { name: 'inicio_actividades', type: 'date', value: rs.inicio_actividades || '' })),
             el('label', {}, 'Color (barra superior)', el('input', { type: 'color', name: 'color', value: rs.color }))),
         el('label', { class: 'casilla' }, el('input', { type: 'checkbox', name: 'regimen_arba_bsas', checked: rs.regimen_arba_bsas }),
             'Percibe o retiene ingresos brutos de Buenos Aires (régimen especial ARBA)'),
+        el('p', { class: 'ayuda' }, 'El domicilio comercial, los ingresos brutos y el inicio de actividades salen impresos en los comprobantes (RG 1415). Si una sucursal tiene domicilio, se imprime el de la sucursal del punto de venta.'),
         el('label', { class: 'casilla' }, el('input', { type: 'checkbox', name: 'activa', checked: rs.activa }), 'Activa'),
         el('div', { class: 'acciones' }, el('button', { type: 'submit' }, 'Guardar cambios')));
     form.addEventListener('submit', async (ev) => {
@@ -89,7 +95,7 @@ function detalleRazon(contenedor, rs) {
         const r = await conBoton(form.querySelector('button[type=submit]'), () => api(`/api/razones-sociales/${encodeURIComponent(rs.id)}`, { method: 'PUT', body: {
             nombre_legal: f.nombre_legal.value, nombre_fantasia: f.nombre_fantasia.value, condicion_iva: f.condicion_iva.value,
             domicilio: f.domicilio.value, regimen_arba_bsas: f.regimen_arba_bsas.checked, activa: f.activa.checked,
-            color: f.color.value } }));
+            color: f.color.value, ingresos_brutos: f.ingresos_brutos.value, inicio_actividades: f.inicio_actividades.value || null } }));
         if (r) {
             mostrarMensaje('Cambios guardados.', 'ok');
             await cargarContexto();

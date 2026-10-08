@@ -103,6 +103,9 @@ async function vistaFacturar(contenedor) {
         : [el('option', { value: '0' }, 'Sin informar')]);
     const nroDoc = el('input', { inputmode: 'numeric', maxlength: 13, placeholder: '0 para consumidor final', value: '0' });
     const nombre = el('input', { maxlength: 200, placeholder: 'Consumidor final' });
+    const domicilio = el('input', { maxlength: 300, placeholder: 'Obligatorio si no es consumidor final' });
+    const selVenta = el('select', {}, ['Contado', 'Cuenta corriente', 'Tarjeta de débito', 'Tarjeta de crédito',
+        'Transferencia', 'Cheque', 'Otra'].map(v => el('option', { value: v }, v)));
     const selCondicion = el('select', {});
 
     // --- Lineas ---
@@ -169,12 +172,13 @@ async function vistaFacturar(contenedor) {
         el('div', { class: 'tarjeta' }, el('h2', {}, 'Comprobante'),
             el('div', { class: 'grilla-form' },
                 el('label', {}, 'Tipo de comprobante', selFormulario), el('label', {}, 'Concepto', selConcepto),
-                el('label', {}, 'Moneda', selMoneda), campoAsociado),
+                el('label', {}, 'Moneda', selMoneda), el('label', {}, 'Condiciones de venta', selVenta), campoAsociado),
             campoServicio),
         el('div', { class: 'tarjeta' }, el('h2', {}, 'Receptor'),
             el('div', { class: 'grilla-form' },
                 el('label', {}, 'Tipo de documento', selDoc), el('label', {}, 'Número', nroDoc),
-                el('label', {}, 'Nombre o razón social', nombre), el('label', {}, 'Condición frente al IVA', selCondicion))),
+                el('label', {}, 'Nombre o razón social', nombre), el('label', {}, 'Condición frente al IVA', selCondicion),
+                el('label', {}, 'Domicilio', domicilio))),
         el('div', { class: 'tarjeta' }, el('h2', {}, 'Detalle'),
             el('div', { class: 'tabla-scroll' }, el('table', { class: 'tabla-lineas' },
                 el('thead', {}, el('tr', {}, el('th', {}, 'Descripción'), el('th', {}, 'Cantidad'),
@@ -201,7 +205,9 @@ async function vistaFacturar(contenedor) {
         }
         const cuerpo = {
             formulario_id: f.id, concepto: Number(selConcepto.value), moneda: selMoneda.value, lineas,
+            condicion_venta: selVenta.value,
             receptor: { doc_tipo: Number(selDoc.value || 0), doc_nro: nroDoc.value || '0', nombre: nombre.value,
+                        domicilio: domicilio.value,
                         condicion_iva: Number(selCondicion.value || 0) }
         };
         if (f.es_nota) cuerpo.asociado_id = selAsociado.value || null;

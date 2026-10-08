@@ -44,6 +44,9 @@ body {
 .pie { display: flex; gap: 16px; align-items: center; margin-top: 18px; border-top: 1px solid #212529; padding-top: 12px; }
 .qr svg { display: block; }
 .autorizado { font-weight: 700; }
+/* RG 1415 Anexo II A, I.a.11: "Fecha Vto.:" en caracteres no inferiores a 12 puntos (16 px). */
+.autorizacion .cae { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+.emisor .razon-social { font-weight: 600; }
 
 @page { size: A4; margin: 10mm; }
 @media print {
