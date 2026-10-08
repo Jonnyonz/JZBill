@@ -5,13 +5,15 @@
 
 const ROLES = { administrador: 'Administrador', supervisor: 'Supervisor', cajero: 'Cajero', solo_lectura: 'Solo lectura' };
 const MODOS = { empresa: 'Empresa', prueba: 'Prueba' };
-const TITULOS = { inicio: 'Inicio', razones: 'Razones sociales', sucursales: 'Sucursales', usuarios: 'Usuarios',
-                  auditoria: 'Auditoría', cuenta: 'Mi cuenta' };
+const TITULOS = { inicio: 'Inicio', facturar: 'Facturar', comprobantes: 'Comprobantes', razones: 'Razones sociales',
+                  sucursales: 'Sucursales', usuarios: 'Usuarios', auditoria: 'Auditoría', cuenta: 'Mi cuenta' };
+const ROLES_EMITEN = ['administrador', 'supervisor', 'cajero'];
 const VISTAS_ADMIN = ['razones', 'sucursales', 'usuarios', 'auditoria'];
 
 const Panel = { yo: null, contexto: null, opciones: [], sucursales: [] };
 
 function esAdmin() { return Panel.yo && Panel.yo.rol === 'administrador'; }
+function emite() { return Panel.yo && ROLES_EMITEN.includes(Panel.yo.rol); }
 
 function iniciales(texto) {
     const partes = String(texto || '?').trim().split(/\s+/).filter(Boolean);
@@ -129,7 +131,7 @@ function alternarLateral(abrir) {
 // --- Vistas ---
 function vistaActual() {
     const nombre = (location.hash || '#inicio').slice(1);
-    if (!TITULOS[nombre] || (VISTAS_ADMIN.includes(nombre) && !esAdmin())) return 'inicio';
+    if (!TITULOS[nombre] || (VISTAS_ADMIN.includes(nombre) && !esAdmin()) || (nombre === 'facturar' && !emite())) return 'inicio';
     return nombre;
 }
 
@@ -141,6 +143,8 @@ function mostrarVista(nombre) {
     document.getElementById('titulo-vista').textContent = TITULOS[nombre];
     const contenedor = document.getElementById('vista-' + nombre);
     if (nombre === 'inicio') vistaInicio(contenedor);
+    else if (nombre === 'facturar') vistaFacturar(contenedor);
+    else if (nombre === 'comprobantes') vistaComprobantes(contenedor);
     else if (nombre === 'razones') vistaRazones(contenedor);
     else if (nombre === 'sucursales') vistaSucursales(contenedor);
     else if (nombre === 'usuarios') vistaUsuarios(contenedor);
@@ -160,7 +164,7 @@ function vistaInicio(contenedor) {
                 el('dt', {}, 'Sucursal'), el('dd', {}, c.sucursal_nombre || 'Sin sucursal asignada'),
                 el('dt', {}, 'Punto de venta'), el('dd', { class: 'mono' }, c.punto_venta_numero ? numeroPv(c.punto_venta_numero) : 'Sin asignar'),
                 el('dt', {}, 'Rol'), el('dd', {}, ROLES[Panel.yo.rol])),
-            el('p', { class: 'ayuda' }, 'La facturación llega en las próximas versiones. Para cambiar de razón social, modo o sucursal, usá el menú del avatar.'));
+            el('p', { class: 'ayuda' }, 'Para facturar, entrá a Facturar en el menú. Para cambiar de razón social, modo o sucursal, usá el menú del avatar.'));
     } else {
         tarjeta.append(el('h2', {}, 'Sin razones sociales'),
             el('p', { class: 'ayuda' }, esAdmin()
@@ -194,6 +198,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('avatar').textContent = iniciales(Panel.yo.nombre || Panel.yo.usuario);
     document.getElementById('avatar-nombre').textContent = Panel.yo.nombre || Panel.yo.usuario;
     if (esAdmin()) document.querySelectorAll('.nav-btn[data-admin]').forEach(b => b.classList.remove('oculto'));
+    if (emite()) document.querySelectorAll('.nav-btn[data-emite]').forEach(b => b.classList.remove('oculto'));
     document.querySelectorAll('.nav-btn[data-vista]').forEach(b => b.addEventListener('click', () => {
         location.hash = '#' + b.dataset.vista;
         alternarLateral(false);

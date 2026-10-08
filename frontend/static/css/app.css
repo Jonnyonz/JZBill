@@ -358,6 +358,21 @@ body.panel { display: flex; height: 100vh; overflow: hidden; }
 .contexto-chip { display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 0.88rem; flex-wrap: wrap; }
 .vista { width: 100%; max-width: 1500px; margin: 0 auto; padding: 2rem; display: grid; gap: 1.5rem; align-content: start; }
 
+/* ===== Facturacion ===== */
+form.facturacion { gap: 1.5rem; }
+.tabla-lineas td { padding: 0.5rem 0.4rem; vertical-align: middle; }
+.tabla-lineas .col-descripcion { min-width: 260px; width: 55%; }
+.tabla-lineas .col-numero { min-width: 110px; }
+.tabla-lineas .col-numero input { text-align: right; }
+.tabla-lineas .col-importe { text-align: right; white-space: nowrap; min-width: 110px; }
+.tabla-lineas + .acciones, .tabla-scroll + .acciones { margin-top: 1rem; }
+.pie-factura { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.pie-factura > div:first-child { display: grid; }
+.total-comprobante { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.01em; }
+.pie-factura button[type="submit"] { padding: 0.85rem 2.4rem; font-size: 1rem; }
+.tarjeta.emitido { border-left: 4px solid var(--success); }
+td.vacio { text-align: center; padding: 2rem 1rem; color: var(--text-muted); }
+
 /* Barra de celular y fondo del menu desplegado (solo en pantallas chicas). */
 .barra-movil, .fondo-lateral { display: none; }
 

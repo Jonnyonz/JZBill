@@ -6,6 +6,7 @@ const CONDICIONES_IVA = { responsable_inscripto: 'Responsable inscripto', monotr
 const MAX_PEM = 16000;
 // La ficha abierta la define: refresca la tarjeta de conexion con ARCA cuando cambia un certificado.
 let refrescarArca = () => {};
+let refrescarFormularios = () => {};
 
 function selectCondicion(valor) {
     const s = el('select', { name: 'condicion_iva', required: true });
@@ -103,8 +104,11 @@ function detalleRazon(contenedor, rs) {
     const tarjetaArca = el('div', { class: 'tarjeta' });
     conexionArca(tarjetaArca, rs, 'prueba');
     refrescarArca = () => conexionArca(tarjetaArca, rs, tarjetaArca.dataset.modo || 'prueba');
+    const tarjetaFormularios = el('div', { class: 'tarjeta' });
+    formularios(tarjetaFormularios, rs);
+    refrescarFormularios = () => formularios(tarjetaFormularios, rs);
     return [el('div', { class: 'tarjeta' }, el('h2', { class: 'contexto-chip' }, puntoColor(rs.color), rs.nombre_legal), form),
-            el('div', { class: 'dos-columnas' }, tarjetaPv, tarjetaCert), tarjetaArca];
+            el('div', { class: 'dos-columnas' }, tarjetaPv, tarjetaCert), tarjetaFormularios, tarjetaArca];
 }
 
 async function puntosVenta(tarjeta, rs) {
@@ -141,7 +145,7 @@ async function puntosVenta(tarjeta, rs) {
         ev.preventDefault();
         const r = await conBoton(form.querySelector('button'), () => api(`/api/razones-sociales/${encodeURIComponent(rs.id)}/puntos-venta`,
             { method: 'POST', body: { numero: Number(form.elements.numero.value), descripcion: form.elements.descripcion.value } }));
-        if (r) { mostrarMensaje('Punto de venta agregado.', 'ok'); puntosVenta(tarjeta, rs); }
+        if (r) { mostrarMensaje('Punto de venta agregado.', 'ok'); puntosVenta(tarjeta, rs); refrescarFormularios(); }
     });
     tarjeta.append(
         lista.length ? el('div', { class: 'tabla-scroll' }, el('table', {}, el('thead', {}, el('tr', {},
@@ -302,4 +306,93 @@ async function conexionArca(tarjeta, rs, modo) {
         accion('Probar conexión', 'conectar', () => 'Conexión correcta.'),
         accion('Actualizar parámetros fiscales', 'parametros', r => r.nueva ? `Parámetros actualizados (versión ${r.version}).` : 'Los parámetros no cambiaron.'),
         e.bloqueado_hasta ? accion('Ya lo corregí: desbloquear', 'desbloquear', () => 'Desbloqueado. Probá la conexión.') : null));
+}
+
+// Formularios de comprobante por punto de venta. Los electronicos toman tipo, nombre y letra de los parametros de
+// ARCA; su contador de cada modo se sincroniza con "Consultar ultimo numero en ARCA" (nunca a mano).
+async function formularios(tarjeta, rs) {
+    const vigente = redibujar(tarjeta);
+    const base = `/api/razones-sociales/${encodeURIComponent(rs.id)}/formularios`;
+    tarjeta.append(el('h2', {}, 'Formularios'),
+        el('p', { class: 'ayuda' }, 'Cada tipo de comprobante que se emite en un punto de venta. Electrónico: pide el CAE a ARCA y usa su numeración, una por modo. No electrónico (presupuesto, remito interno): solo numera y guarda.'));
+    let lista, pvs, tipos = [];
+    try {
+        [lista, pvs] = await Promise.all([api(base), api(`/api/razones-sociales/${encodeURIComponent(rs.id)}/puntos-venta`)]);
+        for (const modo of ['empresa', 'prueba']) {
+            try { tipos = (await api('/api/parametros-fiscales?modo=' + modo)).tipos.TiposCbte || []; break; }
+            catch (e) { /* sin parametros en ese modo: se prueba el otro */ }
+        }
+    } catch (e) {
+        mostrarMensaje(e.message, 'error');
+        return;
+    }
+    if (!vigente()) return;
+    const cuerpo = el('tbody');
+    for (const f of lista) {
+        const activo = el('button', { type: 'button', class: 'secundario' }, f.activo ? 'Desactivar' : 'Activar');
+        activo.addEventListener('click', async () => {
+            const r = await conBoton(activo, () => api(`${base}/${encodeURIComponent(f.id)}`, { method: 'PATCH', body: { activo: !f.activo } }));
+            if (r) formularios(tarjeta, rs);
+        });
+        const sincronizar = modo => {
+            const b = el('button', { type: 'button', class: 'secundario', title: 'Consultar último número en ARCA (' + modo + ')' },
+                modo === 'prueba' ? 'Último en ARCA (prueba)' : 'Último en ARCA (empresa)');
+            b.addEventListener('click', async () => {
+                const r = await conBoton(b, () => api(`${base}/${encodeURIComponent(f.id)}/sincronizar`, { method: 'POST', body: { modo } }));
+                if (r) { mostrarMensaje(`Último ${f.nombre} en ARCA (${modo}): ${r.ultimo[modo]}.`, 'ok'); formularios(tarjeta, rs); }
+            });
+            return b;
+        };
+        cuerpo.append(el('tr', {},
+            el('td', { class: 'mono' }, String(f.punto_venta).padStart(5, '0')),
+            el('td', {}, f.nombre, f.codigo_arca ? el('div', { class: 'sub mono' }, 'Código ARCA ' + f.codigo_arca) : null),
+            el('td', {}, f.electronico ? el('span', { class: 'etiqueta acento' }, 'Electrónico') : el('span', { class: 'etiqueta' }, 'No electrónico')),
+            el('td', { class: 'mono sin-corte' }, `Empresa ${f.ultimo.empresa ?? 0}`, el('div', {}, `Prueba ${f.ultimo.prueba ?? 0}`)),
+            el('td', {}, f.activo ? el('span', { class: 'etiqueta ok' }, 'Activo') : el('span', { class: 'etiqueta' }, 'Inactivo')),
+            el('td', {}, el('div', { class: 'acciones' }, f.electronico ? [sincronizar('prueba'), sincronizar('empresa')] : null, activo))));
+    }
+    tarjeta.append(lista.length
+        ? el('div', { class: 'tabla-scroll' }, el('table', {}, el('thead', {}, el('tr', {},
+            el('th', {}, 'PV'), el('th', {}, 'Formulario'), el('th', {}, 'Tipo'), el('th', {}, 'Último número'),
+            el('th', {}, 'Estado'), el('th', {}, ''))), cuerpo))
+        : el('p', { class: 'ayuda' }, 'Sin formularios.'));
+
+    const activos = pvs.filter(pv => pv.activo);
+    if (!activos.length) {
+        tarjeta.append(el('p', { class: 'ayuda' }, 'Primero agregá un punto de venta.'));
+        return;
+    }
+    const selPv = el('select', { name: 'pv', required: true },
+        activos.map(pv => el('option', { value: pv.id }, String(pv.numero).padStart(5, '0') + (pv.descripcion ? ' ' + pv.descripcion : ''))));
+    const electronico = el('input', { type: 'checkbox', name: 'electronico', checked: true });
+    const selTipo = el('select', { name: 'tipo' }, tipos.map(t => el('option', { value: t.codigo }, `${t.descripcion} (${t.codigo})`)));
+    const nombre = el('input', { name: 'nombre', maxlength: 80, placeholder: 'Presupuesto' });
+    const campoTipo = el('label', {}, 'Tipo de comprobante de ARCA', selTipo);
+    const campoNombre = el('label', { class: 'oculto' }, 'Nombre', nombre);
+    const actualizar = () => {
+        campoTipo.classList.toggle('oculto', !electronico.checked);
+        campoNombre.classList.toggle('oculto', electronico.checked);
+    };
+    electronico.addEventListener('change', actualizar);
+    const form = el('form', {},
+        el('h3', {}, 'Agregar formulario'),
+        !tipos.length ? el('p', { class: 'ayuda' }, 'Para los electrónicos hacen falta los parámetros fiscales: actualizalos en Conexión con ARCA.') : null,
+        el('div', { class: 'grilla-form' }, el('label', {}, 'Punto de venta', selPv), campoTipo, campoNombre),
+        el('label', { class: 'casilla' }, electronico, 'Electrónico (pide el CAE a ARCA)'),
+        el('div', { class: 'acciones' }, el('button', { type: 'submit' }, 'Agregar formulario')));
+    form.addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        const pedido = { punto_venta_id: selPv.value, electronico: electronico.checked };
+        if (electronico.checked) pedido.codigo_arca = Number(selTipo.value);
+        else pedido.nombre = nombre.value;
+        const r = await conBoton(form.querySelector('button[type=submit]'), () => api(base, { method: 'POST', body: pedido }));
+        if (r) {
+            mostrarMensaje(r.electronico
+                ? `Formulario ${r.nombre} agregado. Si ya emitiste ese tipo en ese punto de venta, tocá "Último en ARCA" para sincronizar el número.`
+                : `Formulario ${r.nombre} agregado.`, 'ok');
+            formularios(tarjeta, rs);
+        }
+    });
+    tarjeta.append(form);
+    actualizar();
 }

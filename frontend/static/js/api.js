@@ -75,6 +75,10 @@ function fechaHora(iso) {
 }
 
 function fecha(iso) {
+    // Fecha sola (AAAA-MM-DD, por ejemplo la de un comprobante): es un dia calendario, sin hora ni zona. Pasarla por
+    // Date la toma como medianoche UTC y en Argentina mostraria el dia anterior.
+    const solo = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso));
+    if (solo) return `${Number(solo[3])}/${Number(solo[2])}/${solo[1]}`;
     return new Date(iso).toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' });
 }
 
