@@ -233,9 +233,7 @@ function mostrarEmitido(zona, c, nuevo) {
             el('dt', {}, 'Fecha'), el('dd', {}, fecha(c.fecha)),
             el('dt', {}, 'Total'), el('dd', {}, `${c.moneda} ${formatoImporte(c.total)}`),
             c.cae ? el('dt', {}, 'CAE') : null, c.cae ? el('dd', { class: 'mono' }, c.cae) : null,
-            c.cae ? el('dt', {}, 'Vencimiento del CAE') : null, c.cae ? el('dd', {}, fecha(c.cae_vencimiento)) : null,
-            el('dt', {}, 'Modo'), el('dd', {}, el('span', { class: 'etiqueta ' + (c.modo === 'prueba' ? 'aviso' : 'ok') },
-                c.modo === 'prueba' ? 'Prueba, sin validez fiscal' : 'Empresa'))),
+            c.cae ? el('dt', {}, 'Vencimiento del CAE') : null, c.cae ? el('dd', {}, fecha(c.cae_vencimiento)) : null),
         el('div', { class: 'acciones' }, imprimir, otro)));
 }
 
