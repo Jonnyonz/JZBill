@@ -5,6 +5,7 @@ Los errores de negocio llegan en <Errors><Err><Code/><Msg/></Err></Errors>; los 
 
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Optional
 
 from jzbill.arca import soap
@@ -115,3 +116,88 @@ def ultimo_autorizado(url: str, credenciales: Credenciales, punto_venta: int, ti
         return int(_texto(resultado, "CbteNro"))
     except ValueError:
         raise soap.ErrorRed("wsfe.respuesta_invalida", "Número de comprobante inválido en la respuesta.")
+
+
+# FEDetRequest en el orden del WSDL (xsd:sequence: fuera de orden, ARCA rechaza). Los arrays van despues.
+_DETALLE = ("Concepto", "DocTipo", "DocNro", "CbteDesde", "CbteHasta", "CbteFch", "ImpTotal", "ImpTotConc", "ImpNeto",
+            "ImpOpEx", "ImpTrib", "ImpIVA", "FchServDesde", "FchServHasta", "FchVtoPago", "MonId", "MonCotiz",
+            "CanMisMonExt", "CondicionIVAReceptorId")
+
+
+def _valor(v) -> str:
+    """Decimal con 2 decimales para importes (nunca float); el resto tal cual. MonCotiz va como str ya armado."""
+    return f"{v:.2f}" if isinstance(v, Decimal) else str(v)
+
+
+def _observaciones(elemento: Optional[ET.Element]) -> list:
+    return _lista(elemento, "Observaciones", "Obs")
+
+
+def solicitar_cae(url: str, credenciales: Credenciales, punto_venta: int, tipo_comprobante: int, detalle: dict,
+                  asociados: tuple = ()) -> dict:
+    """FECAESolicitar de UN comprobante. detalle: campos de FEDetRequest por nombre (ver _DETALLE; los que no
+    estan no se envian). asociados: dicts con Tipo, PtoVta, Nro y opcionalmente Cuit y CbteFch (notas de credito y
+    debito). Devuelve resultado (A aprobado, R rechazado, P parcial), CAE, vencimiento, observaciones y errores; un
+    rechazo NO es excepcion (el numero queda libre). Errores sin detalle (por ejemplo de autenticacion) si."""
+    # ponytail: sin arrays Iva/Tributos (comprobantes C no los llevan); se agregan con las facturas A y B.
+    cuerpo = _operacion("FECAESolicitar", credenciales)
+    req = ET.SubElement(cuerpo, _q("FeCAEReq"))
+    cab = ET.SubElement(req, _q("FeCabReq"))
+    ET.SubElement(cab, _q("CantReg")).text = "1"
+    ET.SubElement(cab, _q("PtoVta")).text = str(int(punto_venta))
+    ET.SubElement(cab, _q("CbteTipo")).text = str(int(tipo_comprobante))
+    det = ET.SubElement(ET.SubElement(req, _q("FeDetReq")), _q("FECAEDetRequest"))
+    for campo in _DETALLE:
+        if detalle.get(campo) is not None:
+            ET.SubElement(det, _q(campo)).text = _valor(detalle[campo])
+    if asociados:
+        bloque = ET.SubElement(det, _q("CbtesAsoc"))
+        for a in asociados:
+            item = ET.SubElement(bloque, _q("CbteAsoc"))
+            for campo in ("Tipo", "PtoVta", "Nro", "Cuit", "CbteFch"):
+                if a.get(campo) is not None:
+                    ET.SubElement(item, _q(campo)).text = str(a[campo])
+    resultado = _llamar(url, "FECAESolicitar", cuerpo)
+    errores, eventos = errores_y_eventos(resultado)
+    respuesta = None
+    bloque = resultado.find(_q("FeDetResp"))
+    if bloque is not None:
+        respuesta = bloque.find(_q("FECAEDetResponse"))
+    if respuesta is None:
+        if errores:
+            raise ErrorNegocio(errores)
+        raise soap.ErrorRed("wsfe.sin_detalle", "FECAESolicitar sin detalle en la respuesta.")
+    return {"resultado": _texto(respuesta, "Resultado"), "cae": _texto(respuesta, "CAE"),
+            "vencimiento_cae": _texto(respuesta, "CAEFchVto"), "numero": _texto(respuesta, "CbteDesde"),
+            "fecha": _texto(respuesta, "CbteFch"), "observaciones": _observaciones(respuesta),
+            "errores": errores, "eventos": eventos}
+
+
+def consultar(url: str, credenciales: Credenciales, punto_venta: int, tipo_comprobante: int, numero: int) -> dict:
+    """FECompConsultar: datos de un comprobante ya autorizado (para recuperar el CAE si se perdio la respuesta, o
+    la fecha de un comprobante asociado). Si no existe, ARCA responde con Errors (ErrorNegocio)."""
+    cuerpo = _operacion("FECompConsultar", credenciales)
+    req = ET.SubElement(cuerpo, _q("FeCompConsReq"))
+    ET.SubElement(req, _q("CbteTipo")).text = str(int(tipo_comprobante))
+    ET.SubElement(req, _q("CbteNro")).text = str(int(numero))
+    ET.SubElement(req, _q("PtoVta")).text = str(int(punto_venta))
+    resultado = _llamar(url, "FECompConsultar", cuerpo)
+    errores, _ = errores_y_eventos(resultado)
+    datos = resultado.find(_q("ResultGet"))
+    if datos is None:
+        raise ErrorNegocio(errores) if errores else soap.ErrorRed("wsfe.sin_resultado", "FECompConsultar vacío.")
+    salida = {hijo.tag.rsplit("}", 1)[-1]: (hijo.text or "").strip() for hijo in datos if len(hijo) == 0}
+    salida["observaciones"] = _observaciones(datos)
+    return salida
+
+
+def cotizacion(url: str, credenciales: Credenciales, moneda: str) -> tuple:
+    """FEParamGetCotizacion: (cotizacion como str, fecha yyyymmdd). Es la que ARCA toma de referencia."""
+    cuerpo = _operacion("FEParamGetCotizacion", credenciales)
+    ET.SubElement(cuerpo, _q("MonId")).text = moneda
+    resultado = _llamar(url, "FEParamGetCotizacion", cuerpo)
+    errores, _ = errores_y_eventos(resultado)
+    datos = resultado.find(_q("ResultGet"))
+    if datos is None or not _texto(datos, "MonCotiz"):
+        raise ErrorNegocio(errores) if errores else soap.ErrorRed("wsfe.sin_resultado", "Sin cotización.")
+    return _texto(datos, "MonCotiz"), _texto(datos, "FchCotiz")
