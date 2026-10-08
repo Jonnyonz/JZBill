@@ -68,6 +68,7 @@ class ComprobanteNuevo(BaseModel):
     servicio_hasta: Optional[date] = None
     vencimiento_pago: Optional[date] = None
     asociado_id: Optional[str] = Field(default=None, max_length=40)
+    cliente_id: Optional[str] = Field(default=None, max_length=40)
 
 
 class Rechazo(Exception):
@@ -193,6 +194,11 @@ async def emitir(data: ComprobanteNuevo, request: Request, ctx: dict = Depends(c
         SELECT s.domicilio FROM sucursal_puntos_venta sp JOIN sucursales s ON s.id = sp.sucursal_id
         WHERE sp.punto_venta_id = $1 AND btrim(s.domicilio) <> ''
     """, f["punto_venta_id"]) or rs["domicilio"]
+    cliente_id = None
+    if data.cliente_id:
+        cliente_id = await conn.fetchval("SELECT id FROM clientes WHERE id = $1 AND activo", uuid_o_404(data.cliente_id))
+        if cliente_id is None:
+            raise HTTPException(404, "No encontrado.")
     lineas, total = calcular(data.lineas)
     if total <= 0:
         raise HTTPException(400, "El total tiene que ser mayor a cero.")
@@ -301,9 +307,9 @@ async def emitir(data: ComprobanteNuevo, request: Request, ctx: dict = Depends(c
                     receptor_doc_tipo, receptor_doc_nro, receptor_nombre, condicion_iva_receptor, moneda, cotizacion,
                     importe_neto, importe_total, cae, cae_vencimiento, observaciones_arca, parametros_version_id,
                     comprobante_ref, usuario_id, emisor_domicilio, emisor_ingresos_brutos, emisor_inicio_actividades,
-                    receptor_domicilio, condicion_venta)
+                    receptor_domicilio, condicion_venta, cliente_id)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
-                        $21, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32)
+                        $21, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33)
                 RETURNING id
             """, rs["id"], f["id"], modo, f["electronico"], f["codigo_arca"], f["nombre"], f["letra"], f["pv_numero"],
                 numero, hoy, data.concepto, data.servicio_desde if data.concepto in (2, 3) else None,
@@ -313,7 +319,7 @@ async def emitir(data: ComprobanteNuevo, request: Request, ctx: dict = Depends(c
                 data.moneda, Decimal(cotizacion), total, cae, vencimiento, json.dumps(observaciones),
                 vigentes["version"] if vigentes else None, asociado["id"] if asociado else None, usuario["id"],
                 emisor_domicilio, rs["ingresos_brutos"], rs["inicio_actividades"], data.receptor.domicilio.strip(),
-                data.condicion_venta)
+                data.condicion_venta, cliente_id)
             await conn.executemany("""
                 INSERT INTO comprobante_lineas (comprobante_id, orden, descripcion, cantidad, precio_unitario, importe)
                 VALUES ($1, $2, $3, $4, $5, $6)
@@ -344,6 +350,7 @@ def _salida(c, lineas=None) -> dict:
                            "nombre": c["receptor_nombre"], "condicion_iva": c["condicion_iva_receptor"],
                            "domicilio": c["receptor_domicilio"]},
               "condicion_venta": c["condicion_venta"],
+              "cliente_id": str(c["cliente_id"]) if c["cliente_id"] else None,
               "moneda": c["moneda"], "cotizacion": str(c["cotizacion"]), "total": str(c["importe_total"]),
               "cae": c["cae"], "cae_vencimiento": c["cae_vencimiento"].isoformat() if c["cae_vencimiento"] else None,
               "comprobante_ref": str(c["comprobante_ref"]) if c["comprobante_ref"] else None,

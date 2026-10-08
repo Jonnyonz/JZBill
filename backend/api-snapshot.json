@@ -19,6 +19,20 @@
     "cuerpo": false,
     "params": []
   },
+  "GET /api/clientes": {
+    "cuerpo": false,
+    "params": [
+      "query:incluir_inactivos",
+      "query:limite",
+      "query:q"
+    ]
+  },
+  "GET /api/clientes/{cliente_id}": {
+    "cuerpo": false,
+    "params": [
+      "path:cliente_id"
+    ]
+  },
   "GET /api/comprobantes": {
     "cuerpo": false,
     "params": [
@@ -40,9 +54,19 @@
     "cuerpo": false,
     "params": []
   },
+  "GET /api/grupos-clientes": {
+    "cuerpo": false,
+    "params": []
+  },
   "GET /api/health": {
     "cuerpo": false,
     "params": []
+  },
+  "GET /api/padron/{cuit}": {
+    "cuerpo": false,
+    "params": [
+      "path:cuit"
+    ]
   },
   "GET /api/parametros-fiscales": {
     "cuerpo": false,
@@ -166,7 +190,15 @@
     "cuerpo": true,
     "params": []
   },
+  "POST /api/clientes": {
+    "cuerpo": true,
+    "params": []
+  },
   "POST /api/comprobantes": {
+    "cuerpo": true,
+    "params": []
+  },
+  "POST /api/grupos-clientes": {
     "cuerpo": true,
     "params": []
   },
@@ -244,6 +276,12 @@
   "POST /api/usuarios": {
     "cuerpo": true,
     "params": []
+  },
+  "PUT /api/clientes/{cliente_id}": {
+    "cuerpo": true,
+    "params": [
+      "path:cliente_id"
+    ]
   },
   "PUT /api/contexto": {
     "cuerpo": true,
