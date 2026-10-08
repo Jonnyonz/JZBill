@@ -1,6 +1,8 @@
 """Transporte SOAP 1.1 minimo hacia ARCA.
 
-- TLS con el contexto por defecto de Python (verifica certificado y nombre; no se debilita nada).
+- TLS con el contexto por defecto de Python (verifica certificado y nombre; no se debilita nada) y SIN las suites
+  DHE de campo finito: el WSFE de produccion (servicios1.afip.gov.ar) elige DHE con una clave de 1024 bits que
+  OpenSSL 3 rechaza (DH_KEY_TOO_SMALL). Sacando DHE negocia ECDHE, que todos los hosts de ARCA soportan.
 - Tiempo maximo por llamada (ARCA_TIMEOUT) y tamaño maximo de respuesta.
 - XML: se rechaza cualquier respuesta con DTD o entidades (XXE / expansion de entidades). Los pedidos se arman
   con ElementTree, que escapa los textos: nunca se concatenan strings con datos.
@@ -23,6 +25,7 @@ logger = logging.getLogger(__name__)
 SOAP_ENV = "http://schemas.xmlsoap.org/soap/envelope/"
 MAX_RESPUESTA = 5 * 1024 * 1024
 _TLS = ssl.create_default_context()
+_TLS.set_ciphers("DEFAULT:!kDHE")
 
 
 class ErrorArca(Exception):
