@@ -19,7 +19,24 @@
     "cuerpo": false,
     "params": []
   },
+  "GET /api/comprobantes": {
+    "cuerpo": false,
+    "params": [
+      "query:antes_de",
+      "query:limite"
+    ]
+  },
+  "GET /api/comprobantes/{comprobante_id}": {
+    "cuerpo": false,
+    "params": [
+      "path:comprobante_id"
+    ]
+  },
   "GET /api/contexto": {
+    "cuerpo": false,
+    "params": []
+  },
+  "GET /api/facturacion/opciones": {
     "cuerpo": false,
     "params": []
   },
@@ -80,6 +97,12 @@
       "path:razon_social_id"
     ]
   },
+  "GET /api/razones-sociales/{razon_social_id}/formularios": {
+    "cuerpo": false,
+    "params": [
+      "path:razon_social_id"
+    ]
+  },
   "GET /api/razones-sociales/{razon_social_id}/puntos-venta": {
     "cuerpo": false,
     "params": [
@@ -106,9 +129,22 @@
       "path:usuario_id"
     ]
   },
+  "GET /comprobantes/{comprobante_id}/imprimir": {
+    "cuerpo": false,
+    "params": [
+      "path:comprobante_id"
+    ]
+  },
   "GET /panel": {
     "cuerpo": false,
     "params": []
+  },
+  "PATCH /api/razones-sociales/{razon_social_id}/formularios/{formulario_id}": {
+    "cuerpo": true,
+    "params": [
+      "path:formulario_id",
+      "path:razon_social_id"
+    ]
   },
   "POST /api/auth/clave": {
     "cuerpo": true,
@@ -127,6 +163,10 @@
     "params": []
   },
   "POST /api/auth/setup/admin": {
+    "cuerpo": true,
+    "params": []
+  },
+  "POST /api/comprobantes": {
     "cuerpo": true,
     "params": []
   },
@@ -175,6 +215,19 @@
     "cuerpo": false,
     "params": [
       "path:pedido_id",
+      "path:razon_social_id"
+    ]
+  },
+  "POST /api/razones-sociales/{razon_social_id}/formularios": {
+    "cuerpo": true,
+    "params": [
+      "path:razon_social_id"
+    ]
+  },
+  "POST /api/razones-sociales/{razon_social_id}/formularios/{formulario_id}/sincronizar": {
+    "cuerpo": true,
+    "params": [
+      "path:formulario_id",
       "path:razon_social_id"
     ]
   },

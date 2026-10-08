@@ -148,6 +148,15 @@ async def _actual(conn: asyncpg.Connection, usuario: dict, ip: str = ""):
     actual = await _leer(conn, usuario)
     if actual is None and await _autoelegir(conn, usuario, ip):
         actual = await _leer(conn, usuario)
+    if actual is not None and actual["punto_venta_id"] is None:
+        # El contexto se eligio cuando no habia punto de venta posible (por ejemplo, antes de que el administrador lo
+        # creara): si ahora hay uno que corresponde, se completa solo, sin volver a elegir desde el avatar.
+        pv = await _punto_venta_para(conn, usuario, uuid_o_404(actual["razon_social_id"]),
+                                     uuid_o_404(actual["sucursal_id"]) if actual["sucursal_id"] else None)
+        if pv is not None:
+            await conn.execute("UPDATE sesion_contexto SET punto_venta_id = $2 WHERE token_hash = $1",
+                               _hash_sesion(usuario["token"]), pv["id"])
+            actual = await _leer(conn, usuario)
     return actual
 
 
