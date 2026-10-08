@@ -47,7 +47,8 @@ body {
 .totales { margin-top: 14px; padding-top: 10px; border-top: 1px solid #212529; text-align: right; }
 .total { font-size: 24px; font-weight: 800; }
 .pie { display: flex; gap: 20px; align-items: center; margin-top: 14px; border-top: 1px solid #212529; padding-top: 14px; }
-.qr svg { display: block; }
+/* QR de 50 x 50 mm (pedido de Jonny): el SVG lleva viewBox y escala sin perder nitidez. */
+.qr svg { display: block; width: 50mm; height: 50mm; }
 .autorizado { font-weight: 700; }
 /* RG 1415 Anexo II A, I.a.11: "Fecha Vto.:" en caracteres no inferiores a 12 puntos (16 px). */
 .autorizacion .cae { font-size: 18px; font-weight: 700; margin-bottom: 6px; }

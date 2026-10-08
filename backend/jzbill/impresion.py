@@ -120,7 +120,7 @@ async def imprimir(comprobante_id: str, ctx: dict = Depends(contexto_requerido),
         qr = segno.make(texto_qr(rs["cuit"], c["fecha"], c["punto_venta"], c["codigo_arca"], c["numero"],
                                  c["importe_total"], c["moneda"], c["cotizacion"], c["receptor_doc_tipo"],
                                  c["receptor_doc_nro"], c["cae"]), error="m")
-        pie = (f"<div class=\"qr\">{qr.svg_inline(scale=4, border=2, title='Código QR de ARCA')}</div>"
+        pie = (f"<div class=\"qr\">{qr.svg_inline(border=2, omitsize=True, title='Código QR de ARCA')}</div>"
                f"<div class=\"autorizacion\"><p class=\"cae\">C.A.E. N° <span class=\"mono\">{e(c['cae'])}</span></p>"
                f"<p class=\"cae\">Fecha Vto.: {_fecha(c['cae_vencimiento'])}</p>{prueba}</div>")
     else:
