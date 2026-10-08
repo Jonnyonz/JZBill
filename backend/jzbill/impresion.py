@@ -23,8 +23,9 @@ from jzbill.db import get_conn
 router = APIRouter(tags=["Comprobantes"])
 
 URL_QR = "https://www.arca.gob.ar/fe/qr/?p="
-CONDICIONES_EMISOR = {"responsable_inscripto": "IVA Responsable Inscripto", "monotributo": "Responsable Monotributo",
-                      "exento": "IVA Exento"}
+# RG 1415 Anexo II A, I.a.5: leyenda literal de la condicion frente al IVA del emisor (la norma escribe "INSCRITO").
+CONDICIONES_EMISOR = {"responsable_inscripto": "IVA RESPONSABLE INSCRITO", "monotributo": "RESPONSABLE MONOTRIBUTO",
+                      "exento": "IVA EXENTO"}
 
 
 def texto_qr(cuit: str, fecha: date, punto_venta: int, tipo: int, numero: int, total: Decimal, moneda: str,
@@ -64,9 +65,16 @@ async def _descripcion(conn: asyncpg.Connection, version_id, tipo: str, codigo) 
     return valor or str(codigo)
 
 
+def _es_consumidor_final(descripcion: str) -> bool:
+    return " ".join(descripcion.lower().split()) == "consumidor final"
+
+
 @router.get("/comprobantes/{comprobante_id}/imprimir", response_class=HTMLResponse)
 async def imprimir(comprobante_id: str, ctx: dict = Depends(contexto_requerido),
                    conn: asyncpg.Connection = Depends(get_conn)):
+    """Representacion impresa segun la RG 1415 Anexo II (aplicada por la RG 4291 art. 14): emisor arriba a la
+    izquierda, letra con "Codigo N." al centro, numero, fecha, CUIT, ingresos brutos e inicio de actividades arriba a
+    la derecha; receptor; detalle; condiciones de venta; "C.A.E. N." y "Fecha Vto.:" (12 puntos o mas) con el QR."""
     c = await comprobante_visible(conn, ctx, comprobante_id)
     rs = await conn.fetchrow("SELECT * FROM razones_sociales WHERE id = $1", c["razon_social_id"])
     lineas = await conn.fetch("SELECT * FROM comprobante_lineas WHERE comprobante_id = $1 ORDER BY orden", c["id"])
@@ -75,34 +83,58 @@ async def imprimir(comprobante_id: str, ctx: dict = Depends(contexto_requerido),
     condicion = await _descripcion(conn, version, "CondicionIvaReceptor", c["condicion_iva_receptor"])
     concepto = await _descripcion(conn, version, "TiposConcepto", c["concepto"])
     e = escape
+    # Datos del emisor guardados al emitir (los comprobantes anteriores a la 0006 toman los actuales).
+    domicilio = c["emisor_domicilio"] if c["emisor_domicilio"] is not None else rs["domicilio"]
+    ingresos_brutos = c["emisor_ingresos_brutos"] if c["emisor_ingresos_brutos"] is not None else rs["ingresos_brutos"]
+    inicio_actividades = c["emisor_inicio_actividades"] or rs["inicio_actividades"]
     numero = f"{c['punto_venta']:05d}-{c['numero']:08d}"
     titulo = c["nombre"][:-2] if c["letra"] and c["nombre"].endswith(" " + c["letra"]) else c["nombre"]
     filas = "".join(
         f"<tr><td>{e(l['descripcion'])}</td><td class=\"num\">{e(_cantidad(l['cantidad']))}</td>"
         f"<td class=\"num\">{e(_importe(l['precio_unitario']))}</td><td class=\"num\">{e(_importe(l['importe']))}</td></tr>"
         for l in lineas)
-    receptor = e(c["receptor_nombre"]) if c["receptor_nombre"] else "Consumidor final"
-    documento = f"{e(doc)} {e(str(c['receptor_doc_nro']))}" if c["receptor_doc_nro"] else ""
-    periodo = ""
+
+    consumidor_final = (not c["condicion_iva_receptor"]) or _es_consumidor_final(condicion)
+    receptor = []
+    if consumidor_final:
+        receptor.append("<p><strong>A CONSUMIDOR FINAL</strong></p>")
+        if c["receptor_nombre"]:
+            receptor.append(f"<p>{e(c['receptor_nombre'])}</p>")
+    else:
+        receptor.append(f"<p><strong>{e(c['receptor_nombre'] or 'Sin nombre')}</strong></p>")
+        receptor.append(f"<p>Condición frente al IVA: {e(condicion.upper())}</p>")
+    if c["receptor_doc_nro"]:
+        receptor.append(f"<p>{e(doc)}: <span class=\"mono\">{e(str(c['receptor_doc_nro']))}</span></p>")
+    if c["receptor_domicilio"]:
+        receptor.append(f"<p>Domicilio: {e(c['receptor_domicilio'])}</p>")
     if c["concepto"] in (2, 3):
-        periodo = (f"<p>Período facturado: {_fecha(c['servicio_desde'])} al {_fecha(c['servicio_hasta'])}. "
-                   f"Vencimiento del pago: {_fecha(c['vencimiento_pago'])}.</p>")
+        receptor.append(f"<p>Período facturado: {_fecha(c['servicio_desde'])} al {_fecha(c['servicio_hasta'])}. "
+                        f"Vencimiento del pago: {_fecha(c['vencimiento_pago'])}.</p>")
+
     moneda = ""
     if c["moneda"] != "PES":
-        moneda = f"<p>Moneda: {e(c['moneda'])}. Cotización: {e(_cantidad(c['cotizacion']))}.</p>"
+        moneda = f"<p>Moneda: {e(c['moneda'])}. Tipo de cambio utilizado: {e(_cantidad(c['cotizacion']))}.</p>"
     if c["electronico"]:
         qr = segno.make(texto_qr(rs["cuit"], c["fecha"], c["punto_venta"], c["codigo_arca"], c["numero"],
                                  c["importe_total"], c["moneda"], c["cotizacion"], c["receptor_doc_tipo"],
                                  c["receptor_doc_nro"], c["cae"]), error="m")
         pie = (f"<div class=\"qr\">{qr.svg_inline(scale=3, border=2, title='Código QR de ARCA')}</div>"
-               f"<div><p class=\"autorizado\">Comprobante autorizado por ARCA</p>"
-               f"<p>CAE: <span class=\"mono\">{e(c['cae'])}</span></p>"
-               f"<p>Vencimiento del CAE: {_fecha(c['cae_vencimiento'])}</p></div>")
+               f"<div class=\"autorizacion\"><p class=\"cae\">C.A.E. N° <span class=\"mono\">{e(c['cae'])}</span></p>"
+               f"<p class=\"cae\">Fecha Vto.: {_fecha(c['cae_vencimiento'])}</p></div>")
     else:
         pie = "<div><p class=\"autorizado\">Documento no válido como factura.</p></div>"
     prueba = ""
     if c["modo"] == "prueba":
-        prueba = ("<p class=\"aviso-prueba\">Comprobante de PRUEBA (homologación de ARCA): sin validez fiscal.</p>")
+        prueba = "<p class=\"aviso-prueba\">Comprobante de PRUEBA (homologación de ARCA): sin validez fiscal.</p>"
+    fantasia = f"<h2>{e(rs['nombre_fantasia'])}</h2>" if rs["nombre_fantasia"] else ""
+    datos_derecha = [f"<p>N.º <span class=\"mono\">{numero}</span></p>",
+                     f"<p>Fecha de emisión: {_fecha(c['fecha'])}</p>",
+                     f"<p>CUIT: <span class=\"mono\">{formatear_cuit(rs['cuit'])}</span></p>"]
+    if ingresos_brutos:
+        datos_derecha.append(f"<p>Ingresos Brutos: {e(ingresos_brutos)}</p>")
+    if inicio_actividades:
+        datos_derecha.append(f"<p>INICIO DE ACTIVIDADES: {_fecha(inicio_actividades)}</p>")
+    codigo = f"<small>Código N° {c['codigo_arca']:03d}</small>" if c["codigo_arca"] else ""
     html = f"""<!doctype html>
 <html lang="es">
 <head>
@@ -118,23 +150,20 @@ async def imprimir(comprobante_id: str, ctx: dict = Depends(contexto_requerido),
 {prueba}
 <header class="cabecera">
 <div class="emisor">
-<h2>{e(rs['nombre_fantasia'] or rs['nombre_legal'])}</h2>
-<p>{e(rs['nombre_legal'])}</p>
-<p>{e(rs['domicilio'])}</p>
+{fantasia}
+<p class="razon-social">{e(rs['nombre_legal'])}</p>
+<p>{e(domicilio)}</p>
 <p>{e(CONDICIONES_EMISOR.get(rs['condicion_iva'], rs['condicion_iva']))}</p>
 </div>
-<div class="letra"><span>{e(c['letra'] or 'X')}</span>{f"<small>Cód. {c['codigo_arca']:03d}</small>" if c['codigo_arca'] else ''}</div>
+<div class="letra"><span>{e(c['letra'] or 'X')}</span>{codigo}</div>
 <div class="datos-comprobante">
 <h1>{e(titulo)}</h1>
-<p>N.º <span class="mono">{numero}</span></p>
-<p>Fecha: {_fecha(c['fecha'])}</p>
-<p>CUIT: <span class="mono">{formatear_cuit(rs['cuit'])}</span></p>
+{"".join(datos_derecha)}
 </div>
 </header>
 <section class="receptor">
-<p><strong>{receptor}</strong> {documento}</p>
-<p>{f"Condición frente al IVA: {e(condicion)}. " if c['condicion_iva_receptor'] else ""}Concepto: {e(concepto)}.</p>
-{periodo}
+{"".join(receptor)}
+<p>Concepto: {e(concepto)}. Condiciones de venta: {e(c['condicion_venta'])}.</p>
 </section>
 <table class="lineas">
 <thead><tr><th>Descripción</th><th class="num">Cantidad</th><th class="num">Precio unitario</th><th class="num">Importe</th></tr></thead>

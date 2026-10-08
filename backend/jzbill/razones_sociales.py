@@ -2,6 +2,7 @@
 que tiene acceso. Crear y modificar: administrador. El CUIT no se cambia despues del alta (es la identidad
 fiscal del emisor; los comprobantes van a quedar atados a el)."""
 
+from datetime import date
 from typing import Literal, Optional
 
 import asyncpg
@@ -30,6 +31,9 @@ class RazonSocialNueva(BaseModel):
     nombre_fantasia: str = Field(default="", max_length=200)
     condicion_iva: CondicionIva
     domicilio: str = Field(default="", max_length=300)
+    # RG 1415 Anexo II A, I.a.4 y I.a.7: van en el comprobante impreso.
+    ingresos_brutos: str = Field(default="", max_length=40)
+    inicio_actividades: Optional[date] = None
     regimen_arba_bsas: bool = False
     color: Optional[str] = Field(default=None, pattern=_COLOR)
 
@@ -39,6 +43,8 @@ class RazonSocialCambios(BaseModel):
     nombre_fantasia: Optional[str] = Field(default=None, max_length=200)
     condicion_iva: Optional[CondicionIva] = None
     domicilio: Optional[str] = Field(default=None, max_length=300)
+    ingresos_brutos: Optional[str] = Field(default=None, max_length=40)
+    inicio_actividades: Optional[date] = None
     regimen_arba_bsas: Optional[bool] = None
     activa: Optional[bool] = None
     color: Optional[str] = Field(default=None, pattern=_COLOR)
@@ -63,6 +69,8 @@ def _rs_salida(fila, modos: list) -> dict:
         "nombre_fantasia": fila["nombre_fantasia"],
         "condicion_iva": fila["condicion_iva"],
         "domicilio": fila["domicilio"],
+        "ingresos_brutos": fila["ingresos_brutos"],
+        "inicio_actividades": fila["inicio_actividades"].isoformat() if fila["inicio_actividades"] else None,
         "regimen_arba_bsas": fila["regimen_arba_bsas"],
         "activa": fila["activa"],
         "color": fila["color"],
@@ -104,10 +112,10 @@ async def crear(data: RazonSocialNueva, request: Request, admin: dict = Depends(
         try:
             fila = await conn.fetchrow("""
                 INSERT INTO razones_sociales (cuit, nombre_legal, nombre_fantasia, condicion_iva, domicilio,
-                                              regimen_arba_bsas, color)
-                VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *
+                                              regimen_arba_bsas, color, ingresos_brutos, inicio_actividades)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *
             """, cuit, nombre, data.nombre_fantasia.strip(), data.condicion_iva, data.domicilio.strip(),
-                data.regimen_arba_bsas, color)
+                data.regimen_arba_bsas, color, data.ingresos_brutos.strip(), data.inicio_actividades)
         except asyncpg.UniqueViolationError:
             raise HTTPException(409, "Ya existe una razón social con ese CUIT.")
         await registrar(conn, admin["id"], admin["usuario"], "RAZON_SOCIAL_ALTA",
@@ -131,7 +139,7 @@ async def modificar(razon_social_id: str, data: RazonSocialCambios, request: Req
         cambios["nombre_legal"] = cambios["nombre_legal"].strip()
         if not cambios["nombre_legal"]:
             raise HTTPException(400, "Falta el nombre legal.")
-    for campo in ("nombre_fantasia", "domicilio"):
+    for campo in ("nombre_fantasia", "domicilio", "ingresos_brutos"):
         if campo in cambios:
             cambios[campo] = cambios[campo].strip()
     if "color" in cambios:
@@ -140,10 +148,12 @@ async def modificar(razon_social_id: str, data: RazonSocialCambios, request: Req
     async with conn.transaction():
         fila = await conn.fetchrow("""
             UPDATE razones_sociales SET nombre_legal = $2, nombre_fantasia = $3, condicion_iva = $4,
-                   domicilio = $5, regimen_arba_bsas = $6, activa = $7, color = $8, actualizado_en = now()
+                   domicilio = $5, regimen_arba_bsas = $6, activa = $7, color = $8, ingresos_brutos = $9,
+                   inicio_actividades = $10, actualizado_en = now()
             WHERE id = $1 RETURNING *
         """, actual["id"], nuevo["nombre_legal"], nuevo["nombre_fantasia"], nuevo["condicion_iva"],
-            nuevo["domicilio"], nuevo["regimen_arba_bsas"], nuevo["activa"], nuevo["color"])
+            nuevo["domicilio"], nuevo["regimen_arba_bsas"], nuevo["activa"], nuevo["color"], nuevo["ingresos_brutos"],
+            nuevo["inicio_actividades"])
         modificados = sorted(k for k in cambios if actual[k] != fila[k])
         if modificados:
             await registrar(conn, admin["id"], admin["usuario"], "RAZON_SOCIAL_CAMBIO",

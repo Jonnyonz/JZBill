@@ -37,6 +37,10 @@ CENTAVO = Decimal("0.01")
 # ponytail: Argentina no tiene horario de verano desde 2009; UTC-3 fijo (sin depender de tzdata).
 HORA_AR = timezone(timedelta(hours=-3))
 LETRAS_SOPORTADAS = ("C",)
+# RG 1415 Anexo II B, e): condiciones de venta ("contado, cuenta corriente, etc."). Los medios de pago con su
+# detalle son de la Fase 6 (caja).
+CondicionVenta = Literal["Contado", "Cuenta corriente", "Tarjeta de débito", "Tarjeta de crédito", "Transferencia",
+                         "Cheque", "Otra"]
 
 
 class Linea(BaseModel):
@@ -49,6 +53,7 @@ class Receptor(BaseModel):
     doc_tipo: int = Field(ge=0, le=999)
     doc_nro: str = Field(default="0", max_length=20)
     nombre: str = Field(default="", max_length=200)
+    domicilio: str = Field(default="", max_length=300)
     condicion_iva: int = Field(ge=0, le=99)   # 0: sin informar (solo no electronicos; los electronicos se validan)
 
 
@@ -57,6 +62,7 @@ class ComprobanteNuevo(BaseModel):
     concepto: Literal[1, 2, 3] = 1
     receptor: Receptor
     moneda: str = Field(default="PES", min_length=3, max_length=3)
+    condicion_venta: CondicionVenta = "Contado"
     lineas: List[Linea] = Field(min_length=1, max_length=100)
     servicio_desde: Optional[date] = None
     servicio_hasta: Optional[date] = None
@@ -183,6 +189,10 @@ async def emitir(data: ComprobanteNuevo, request: Request, ctx: dict = Depends(c
     """, uuid_o_404(data.formulario_id), rs["id"], uuid_o_404(ctx["punto_venta_id"]))
     if f is None:
         raise HTTPException(404, "No encontrado.")
+    emisor_domicilio = await conn.fetchval("""
+        SELECT s.domicilio FROM sucursal_puntos_venta sp JOIN sucursales s ON s.id = sp.sucursal_id
+        WHERE sp.punto_venta_id = $1 AND btrim(s.domicilio) <> ''
+    """, f["punto_venta_id"]) or rs["domicilio"]
     lineas, total = calcular(data.lineas)
     if total <= 0:
         raise HTTPException(400, "El total tiene que ser mayor a cero.")
@@ -213,6 +223,12 @@ async def emitir(data: ComprobanteNuevo, request: Request, ctx: dict = Depends(c
         if condicion is None or f["letra"] not in clases(condicion):
             raise HTTPException(400, f"Esa condición frente al IVA del receptor no corresponde a un comprobante "
                                      f"{f['letra']} según ARCA.")
+        # RG 1415 Anexo II A, II.a, c y e: receptor responsable inscripto, monotributista o exento -> nombre y
+        # domicilio comercial obligatorios (el consumidor final, no).
+        if _normal(condicion["descripcion"]) != "consumidor final" and not (
+                data.receptor.nombre.strip() and data.receptor.domicilio.strip()):
+            raise HTTPException(400, "Para un receptor que no es consumidor final hacen falta su nombre o razón "
+                                     "social y su domicilio comercial.")
         if _item(vigentes, "TiposMonedas", data.moneda) is None:
             raise HTTPException(400, "Moneda desconocida para ARCA.")
         if es_nota(f["nombre"]):
@@ -284,9 +300,10 @@ async def emitir(data: ComprobanteNuevo, request: Request, ctx: dict = Depends(c
                     punto_venta, numero, fecha, concepto, servicio_desde, servicio_hasta, vencimiento_pago,
                     receptor_doc_tipo, receptor_doc_nro, receptor_nombre, condicion_iva_receptor, moneda, cotizacion,
                     importe_neto, importe_total, cae, cae_vencimiento, observaciones_arca, parametros_version_id,
-                    comprobante_ref, usuario_id)
+                    comprobante_ref, usuario_id, emisor_domicilio, emisor_ingresos_brutos, emisor_inicio_actividades,
+                    receptor_domicilio, condicion_venta)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
-                        $21, $21, $22, $23, $24, $25, $26, $27)
+                        $21, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32)
                 RETURNING id
             """, rs["id"], f["id"], modo, f["electronico"], f["codigo_arca"], f["nombre"], f["letra"], f["pv_numero"],
                 numero, hoy, data.concepto, data.servicio_desde if data.concepto in (2, 3) else None,
@@ -294,7 +311,9 @@ async def emitir(data: ComprobanteNuevo, request: Request, ctx: dict = Depends(c
                 data.vencimiento_pago if data.concepto in (2, 3) else None,
                 data.receptor.doc_tipo, int(doc_nro), data.receptor.nombre.strip(), data.receptor.condicion_iva,
                 data.moneda, Decimal(cotizacion), total, cae, vencimiento, json.dumps(observaciones),
-                vigentes["version"] if vigentes else None, asociado["id"] if asociado else None, usuario["id"])
+                vigentes["version"] if vigentes else None, asociado["id"] if asociado else None, usuario["id"],
+                emisor_domicilio, rs["ingresos_brutos"], rs["inicio_actividades"], data.receptor.domicilio.strip(),
+                data.condicion_venta)
             await conn.executemany("""
                 INSERT INTO comprobante_lineas (comprobante_id, orden, descripcion, cantidad, precio_unitario, importe)
                 VALUES ($1, $2, $3, $4, $5, $6)
@@ -322,7 +341,9 @@ def _salida(c, lineas=None) -> dict:
               "modo": c["modo"], "codigo_arca": c["codigo_arca"], "punto_venta": c["punto_venta"], "numero": c["numero"],
               "fecha": c["fecha"].isoformat(), "concepto": c["concepto"],
               "receptor": {"doc_tipo": c["receptor_doc_tipo"], "doc_nro": str(c["receptor_doc_nro"]),
-                           "nombre": c["receptor_nombre"], "condicion_iva": c["condicion_iva_receptor"]},
+                           "nombre": c["receptor_nombre"], "condicion_iva": c["condicion_iva_receptor"],
+                           "domicilio": c["receptor_domicilio"]},
+              "condicion_venta": c["condicion_venta"],
               "moneda": c["moneda"], "cotizacion": str(c["cotizacion"]), "total": str(c["importe_total"]),
               "cae": c["cae"], "cae_vencimiento": c["cae_vencimiento"].isoformat() if c["cae_vencimiento"] else None,
               "comprobante_ref": str(c["comprobante_ref"]) if c["comprobante_ref"] else None,
