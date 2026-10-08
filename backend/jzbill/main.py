@@ -57,6 +57,16 @@ app = FastAPI(title="JZBill", version=__version__, lifespan=lifespan,
 install_generic_error_handler(app, "jzbill", field="detail")
 app.add_middleware(SecurityHeadersMiddleware, csp=CSP, permissions_policy="geolocation=(), microphone=(), camera=()")
 
+
+@app.middleware("http")
+async def revalidar_paginas(request, call_next):
+    """Paginas y archivos de frontend/: el navegador revalida siempre (ETag, 304 si no cambio). Sin esto guarda
+    el JS viejo despues de una actualizacion."""
+    response = await call_next(request)
+    if not request.url.path.startswith("/api/"):
+        response.headers.setdefault("Cache-Control", "no-cache")
+    return response
+
 app.include_router(auth.router)
 app.include_router(contexto.router)
 app.include_router(razones_sociales.router)
