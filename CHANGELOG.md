@@ -16,6 +16,10 @@ Cambios de JZBill, del más nuevo al más viejo.
   y precios sí.
 - El SKU sigue las reglas de Tracker360: hasta 100 caracteres y con espacios adentro (se normalizan a uno). Antes
   los artículos con espacios en el SKU quedaban afuera de la importación.
+- Precios y costos por CSV (Artículos, administrador y supervisor): archivo con columnas sku y precio o costo
+  (opcionales vigencia_desde y moneda), vista previa con el valor actual y el nuevo por SKU, SKU no encontrados
+  aparte (nunca crea artículos) y filas con error señaladas; con errores no se aplica nada. Hasta 2 MB y 20.000
+  filas; separador ; o , y decimales con coma o punto.
 - Clientes compartidos entre razones sociales y grupos económicos; alta rápida con los datos de la constancia de
   inscripción de ARCA (lupa en Clientes y "Crear cliente nuevo" al facturar); el comprobante guarda el cliente.
 - Pie "Powered By JZTech Solutions" con logo en el ingreso y en el panel.

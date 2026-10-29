@@ -152,6 +152,57 @@ function tarjetaImportarTracker(opciones, alImportar) {
         zona);
 }
 
+// ===== Precios y costos por CSV (administrador y supervisor) =====
+function tarjetaPreciosCsv(alAplicar) {
+    const archivo = el('input', { type: 'file', accept: '.csv,text/csv', 'aria-label': 'Archivo CSV' });
+    const previa = el('button', { type: 'button' }, 'Vista previa');
+    const zona = el('div', {});
+    let texto = null;
+    const leer = () => new Promise((ok, falla) => {
+        const f = archivo.files && archivo.files[0];
+        if (!f) return falla(new Error('Elegí un archivo CSV.'));
+        if (f.size > 2 * 1024 * 1024) return falla(new Error('El archivo supera los 2 MB.'));
+        const r = new FileReader();
+        r.onload = () => ok(String(r.result));
+        r.onerror = () => falla(new Error('No se pudo leer el archivo.'));
+        r.readAsText(f, 'utf-8');
+    });
+    const flecha = ' \u2192 ';
+    previa.addEventListener('click', async () => {
+        vaciar(zona);
+        try { texto = await leer(); } catch (e) { mostrarMensaje(e.message, 'error'); return; }
+        const r = await conBoton(previa, () => api('/api/articulos/precios-csv/previa', { method: 'POST', body: { csv: texto } }));
+        if (!r) return;
+        const cuerpo = el('tbody', {}, r.detalle.cambios.map(c => el('tr', {},
+            el('td', { class: 'mono sin-corte' }, c.sku), el('td', {}, c.descripcion),
+            el('td', { class: 'mono' }, c.precio_nuevo === null ? '' : (c.precio_actual === null ? 'sin precio' : formatoImporte(c.precio_actual)) + flecha + formatoImporte(c.precio_nuevo) + (c.moneda !== 'PES' ? ' ' + c.moneda : '') + ' desde ' + fecha(c.vigencia_desde)),
+            el('td', { class: 'mono' }, c.costo_nuevo === null ? '' : formatoImporte(c.costo_actual) + flecha + formatoImporte(c.costo_nuevo)))));
+        const confirmar = el('button', { type: 'button' }, 'Confirmar cambios');
+        confirmar.addEventListener('click', async () => {
+            const d = await conBoton(confirmar, () => api('/api/articulos/precios-csv', { method: 'POST', body: { csv: texto } }));
+            if (!d) return;
+            vaciar(zona).append(el('p', { class: 'aviso-form' }, 'Aplicado: ' + d.cambios + ' artículos actualizados.' + (d.no_encontrados ? ' ' + d.no_encontrados + ' SKU no encontrados.' : '')));
+            archivo.value = '';
+            mostrarMensaje('Precios y costos actualizados.', 'ok');
+            alAplicar();
+        });
+        const lista = (titulo, filas, pinta) => filas.length ? el('details', { open: filas.length <= 20 },
+            el('summary', {}, titulo + ' (' + filas.length + (filas.length === 500 ? ' o más' : '') + ')'),
+            el('ul', { class: 'lista-simple' }, filas.map(f => el('li', {}, pinta(f))))) : null;
+        zona.append(el('div', { class: 'aviso-form' },
+            el('strong', {}, r.filas + ' filas: ' + r.cambios + ' artículos cambian, ' + r.sin_cambios + ' sin cambios, ' + r.no_encontrados + ' SKU no encontrados, ' + r.errores + ' filas con error.'),
+            r.errores ? el('p', { class: 'sub' }, 'Con filas con error no se aplica nada: corregí el archivo y volvé a subirlo.') : null,
+            lista('Errores', r.detalle.errores, e => 'Fila ' + e.fila + (e.sku ? ' (' + e.sku + ')' : '') + ': ' + e.motivo),
+            lista('SKU no encontrados (no se crean)', r.detalle.no_encontrados, s => s),
+            r.cambios ? el('div', { class: 'tabla-scroll' }, el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, 'SKU'), el('th', {}, 'Descripción'), el('th', {}, 'Precio'), el('th', {}, 'Costo'))), cuerpo)) : null,
+            r.cambios && !r.errores ? el('div', { class: 'acciones' }, confirmar) : null));
+    });
+    return el('div', { class: 'tarjeta' }, el('h2', {}, 'Precios y costos por CSV'),
+        el('p', { class: 'ayuda' }, 'Primera fila con los nombres de columna: sku y precio o costo; opcionales vigencia_desde (AAAA-MM-DD, sin fecha es hoy) y moneda (PES si falta). Separador ; o , y decimales con coma o punto. Solo cambia artículos que ya existen; un SKU que no está se lista aparte y no se crea. Ejemplo:'),
+        el('pre', { class: 'mono' }, 'sku;precio;costo\nABC-001;1250,00;800\nXYZ-9;990;'),
+        el('div', { class: 'fila-form' }, archivo, previa), zona);
+}
+
 // ===== Pantalla Articulos =====
 async function vistaArticulos(contenedor) {
     const vigente = redibujar(contenedor);
@@ -215,6 +266,7 @@ async function vistaArticulos(contenedor) {
     contenedor.append(
         esAdmin() ? tarjetaConexionTracker() : null,
         puedeEditar ? tarjetaImportarTracker(opciones, buscar) : null,
+        puedeEditar ? tarjetaPreciosCsv(buscar) : null,
         el('div', { class: 'tarjeta' },
             el('div', { class: 'titulo-tarjeta' }, el('h2', {}, 'Artículos'), puedeEditar ? nuevo : null),
             el('p', { class: 'ayuda' }, 'El SKU es único en todo el sistema y es la clave para vincular con Tracker360. El costo es solo de referencia para la rentabilidad; el precio de venta es el final, con IVA incluido.'),
