@@ -2,6 +2,19 @@
 
 Cambios de JZBill, del más nuevo al más viejo.
 
+## Sin publicar
+
+### Agregado
+- Clientes compartidos entre razones sociales y grupos económicos; alta rápida con los datos de la constancia de
+  inscripción de ARCA (lupa en Clientes y "Crear cliente nuevo" al facturar); el comprobante guarda el cliente.
+- Pie "Powered By JZTech Solutions" con logo en el ingreso y en el panel.
+
+### Corregido
+- Consumidor final (documento tipo 99) siempre va a ARCA con número 0, aunque se haya tipeado un número: antes
+  ARCA rechazaba el comprobante con el error 10015.
+- Conexión con ARCA en producción: se evitan las suites DHE (clave de 1024 bits) que OpenSSL 3 rechaza.
+- La tarjeta de Conexión con ARCA arranca en el modo del avatar.
+
 ## 2026-10-08 - 0.5.0
 
 ### Agregado

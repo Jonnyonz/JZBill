@@ -210,6 +210,9 @@ async def emitir(data: ComprobanteNuevo, request: Request, ctx: dict = Depends(c
     if len(doc_nro) > 11:
         raise HTTPException(400, "Número de documento inválido.")
     doc = _item(vigentes, "TiposDoc", data.receptor.doc_tipo)
+    # Regla de ARCA (error 10015): con DocTipo 99 ("Doc. (Otro)", el consumidor final) DocNro tiene que ser 0.
+    if data.receptor.doc_tipo == 99:
+        doc_nro = "0"
     if doc and _normal(doc["descripcion"]) in ("cuit", "cuil") and normalizar_cuit(doc_nro) is None:
         raise HTTPException(400, "El CUIT o CUIL del receptor no es válido (dígito verificador).")
     asociado = None
