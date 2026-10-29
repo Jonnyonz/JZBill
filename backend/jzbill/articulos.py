@@ -21,6 +21,10 @@ router = APIRouter(prefix="/api/articulos", tags=["Articulos"])
 
 editor = require_rol("administrador", "supervisor")
 
+# Monedas que se ofrecen para los precios (pedido de Jonny 2026-10-29): la lista completa de ARCA tiene mas de
+# cincuenta. Los codigos son los de FEParamGetTiposMonedas; la descripcion se toma de ahi.
+MONEDAS_OFRECIDAS = ("PES", "DOL", "060", "012")   # pesos, dolar estadounidense, euro, real
+
 
 class ArticuloDatos(BaseModel):
     sku: str = Field(min_length=1, max_length=60)
@@ -118,7 +122,8 @@ async def opciones(usuario: dict = Depends(require_usuario), conn: asyncpg.Conne
     """Alicuotas de IVA y monedas de ARCA para los formularios."""
     vigentes = await _vigentes(conn)
     simple = lambda tipo: [{"codigo": i["codigo"], "descripcion": i["descripcion"]} for i in _codigos(vigentes, tipo)]
-    return {"alicuotas": simple("TiposIva"), "monedas": simple("TiposMonedas")}
+    monedas = {m["codigo"]: m for m in simple("TiposMonedas")}
+    return {"alicuotas": simple("TiposIva"), "monedas": [monedas[c] for c in MONEDAS_OFRECIDAS if c in monedas]}
 
 
 @router.get("")
