@@ -185,7 +185,8 @@ async function vistaArticulos(contenedor) {
     const alicuota = codigo => (opciones.alicuotas.find(a => a.codigo === String(codigo)) || {}).descripcion || codigo;
     const puedeEditar = puedeEditarArticulos();
 
-    const zonaForm = el('div', {});
+    // Ventana flotante (dialog nativo): Esc, Cancelar o Cerrar la cierran.
+    const zonaForm = el('dialog', { class: 'ventana', 'aria-label': 'Artículo' });
     const buscador = el('input', { type: 'search', placeholder: 'Buscar por SKU o descripción', 'aria-label': 'Buscar artículo', maxlength: 100 });
     const inactivos = el('input', { type: 'checkbox' });
     const cuerpo = el('tbody');
@@ -198,11 +199,13 @@ async function vistaArticulos(contenedor) {
             try { articulo = await api('/api/articulos/' + encodeURIComponent(resumen.id)); }
             catch (e) { mostrarMensaje(e.message, 'error'); return; }
         }
+        const cerrar = el('button', { type: 'button', class: 'secundario cerrar-ventana', 'aria-label': 'Cerrar' }, '×');
+        cerrar.addEventListener('click', () => zonaForm.close());
         vaciar(zonaForm).append(
-            el('div', { class: 'tarjeta' }, el('h2', {}, articulo ? 'Editar artículo' : 'Nuevo artículo'),
-                formularioArticulo(opciones, articulo, (guardado) => { if (articulo) abrirForm(guardado); else vaciar(zonaForm); buscar(); }, () => vaciar(zonaForm))),
+            el('div', { class: 'tarjeta' }, el('div', { class: 'titulo-tarjeta' }, el('h2', {}, articulo ? 'Editar artículo' : 'Nuevo artículo'), cerrar),
+                formularioArticulo(opciones, articulo, (guardado) => { if (articulo) abrirForm(guardado); else zonaForm.close(); buscar(); }, () => zonaForm.close())),
             articulo ? tarjetaPrecios(opciones, articulo, (actualizado) => { abrirForm(actualizado); buscar(); }) : null);
-        zonaForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (!zonaForm.open) zonaForm.showModal();
     }
 
     let espera = null;

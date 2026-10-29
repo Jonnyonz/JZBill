@@ -25,6 +25,8 @@ Cambios de JZBill, del más nuevo al más viejo.
   Las líneas libres siguen igual. Enter en el buscador agrega el artículo cuyo SKU coincide (sirve con lector de
   código de barras); con un solo resultado, agrega ese.
 - Pantalla Configuración (solo administrador): la conexión con Tracker360 se mudó ahí desde Artículos.
+- Artículos: el alta y la edición se abren en una ventana flotante sobre la lista (Esc, Cancelar o la X la cierran),
+  en vez de al final de la página.
 - Clientes compartidos entre razones sociales y grupos económicos; alta rápida con los datos de la constancia de
   inscripción de ARCA (lupa en Clientes y "Crear cliente nuevo" al facturar); el comprobante guarda el cliente.
 - Pie "Powered By JZTech Solutions" con logo en el ingreso y en el panel.
