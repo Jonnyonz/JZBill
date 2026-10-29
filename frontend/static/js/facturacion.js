@@ -192,22 +192,60 @@ async function vistaFacturar(contenedor) {
         totalTexto.textContent = selMoneda.value + ' ' + formatoCentavos(total);
     }
 
-    function agregarLinea() {
-        const descripcion = el('input', { maxlength: 250, required: true, placeholder: 'Descripción', 'aria-label': 'Descripción' });
+    // Linea libre (sin articulo) o desde un articulo del catalogo: descripcion y precio quedan copiados y editables.
+    function agregarLinea(articulo) {
+        const descripcion = el('input', { maxlength: 250, required: true, placeholder: 'Descripción', 'aria-label': 'Descripción', value: articulo ? articulo.descripcion : '' });
         const cantidad = el('input', { inputmode: 'decimal', value: '1', required: true, 'aria-label': 'Cantidad' });
-        const precio = el('input', { inputmode: 'decimal', required: true, placeholder: '0,00', 'aria-label': 'Precio unitario' });
+        const precio = el('input', { inputmode: 'decimal', required: true, placeholder: '0,00', 'aria-label': 'Precio unitario', value: articulo && articulo.precio !== null ? String(articulo.precio).replace('.', ',') : '' });
         const importe = el('span', { class: 'mono' }, '-');
         const quitar = el('button', { type: 'button', class: 'peligro', title: 'Quitar línea' }, 'Quitar');
-        const fila = el('tr', {}, el('td', { class: 'col-descripcion' }, descripcion), el('td', { class: 'col-numero' }, cantidad),
-            el('td', { class: 'col-numero' }, precio), el('td', { class: 'col-importe' }, importe), el('td', {}, quitar));
+        const fila = el('tr', {}, el('td', { class: 'col-descripcion' }, articulo ? el('div', { class: 'sub mono' }, articulo.sku) : null, descripcion),
+            el('td', { class: 'col-numero' }, cantidad), el('td', { class: 'col-numero' }, precio), el('td', { class: 'col-importe' }, importe), el('td', {}, quitar));
         fila._descripcion = descripcion; fila._cantidad = cantidad; fila._precio = precio; fila._importe = importe;
+        fila._articuloId = articulo ? articulo.id : null;
         for (const i of [cantidad, precio]) i.addEventListener('input', recalcular);
         quitar.addEventListener('click', () => {
             if (cuerpoLineas.children.length > 1) { fila.remove(); recalcular(); }
         });
+        // Una linea libre vacia se reemplaza por la del articulo.
+        const primera = cuerpoLineas.firstChild;
+        if (articulo && cuerpoLineas.children.length === 1 && !primera._articuloId && !primera._descripcion.value && !primera._precio.value) primera.remove();
         cuerpoLineas.append(fila);
-        descripcion.focus();
+        recalcular();
+        (articulo ? cantidad : descripcion).focus();
+        if (articulo) cantidad.select();
     }
+
+    // Precio vigente del articulo en la moneda del comprobante (sin precio en esa moneda: se tipea).
+    function precioVigente(detalle, moneda) {
+        const hoy = new Date().toISOString().slice(0, 10);
+        const p = (detalle.precios || []).filter(x => x.moneda === moneda && x.vigencia_desde <= hoy).sort((a, b) => b.vigencia_desde < a.vigencia_desde ? -1 : 1)[0];
+        return p ? p.importe : null;
+    }
+
+    const buscadorArticulo = el('input', { type: 'search', placeholder: 'Buscar artículo por SKU o descripción y agregarlo', 'aria-label': 'Buscar artículo', maxlength: 100 });
+    const resultadosArticulo = el('div', {});
+    let esperaArticulo = null;
+    buscadorArticulo.addEventListener('input', () => {
+        clearTimeout(esperaArticulo);
+        const texto = buscadorArticulo.value.trim();
+        if (texto.length < 2) { vaciar(resultadosArticulo); return; }
+        esperaArticulo = setTimeout(async () => {
+            let lista = [];
+            try { lista = await api('/api/articulos?limite=8&q=' + encodeURIComponent(texto)); } catch (e) { mostrarMensaje(e.message, 'error'); }
+            vaciar(resultadosArticulo).append(...(lista.length ? lista.map(a => {
+                const b = el('button', { type: 'button', class: 'opcion-cliente' }, el('span', {}, el('strong', { class: 'mono' }, a.sku), ' ', a.descripcion),
+                    el('span', { class: 'sub mono' }, a.precio === null ? 'sin precio' : selMoneda.value === 'PES' ? formatoImporte(a.precio) : ''));
+                b.addEventListener('click', async () => {
+                    let detalle = a;
+                    try { detalle = await api('/api/articulos/' + encodeURIComponent(a.id)); } catch (e) { mostrarMensaje(e.message, 'error'); return; }
+                    agregarLinea({ id: a.id, sku: a.sku, descripcion: a.descripcion, precio: precioVigente(detalle, selMoneda.value) });
+                    buscadorArticulo.value = ''; vaciar(resultadosArticulo);
+                });
+                return b;
+            }) : [el('p', { class: 'ayuda' }, 'Sin resultados. Podés cargar una línea libre con "Agregar línea".')]));
+        }, 250);
+    });
 
     selFormulario.addEventListener('change', actualizarCabecera);
     selConcepto.addEventListener('change', actualizarCabecera);
@@ -215,7 +253,7 @@ async function vistaFacturar(contenedor) {
     selDoc.addEventListener('change', () => { if (selDoc.value === '99') nroDoc.value = '0'; });
 
     const botonAgregar = el('button', { type: 'button', class: 'secundario' }, 'Agregar línea');
-    botonAgregar.addEventListener('click', agregarLinea);
+    botonAgregar.addEventListener('click', () => agregarLinea(null));
     const botonEmitir = el('button', { type: 'submit' }, 'Emitir');
     const resultado = el('div', {});
 
@@ -234,6 +272,7 @@ async function vistaFacturar(contenedor) {
                 el('label', {}, 'Nombre o razón social', nombre), el('label', {}, 'Condición frente al IVA', selCondicion),
                 el('label', {}, 'Domicilio', domicilio))),
         el('div', { class: 'tarjeta' }, el('h2', {}, 'Detalle'),
+            el('div', { class: 'buscador-cliente' }, buscadorArticulo, resultadosArticulo),
             el('div', { class: 'tabla-scroll' }, el('table', { class: 'tabla-lineas' },
                 el('thead', {}, el('tr', {}, el('th', {}, 'Descripción'), el('th', {}, 'Cantidad'),
                     el('th', {}, 'Precio unitario'), el('th', {}, 'Importe'), el('th', {}, ''))),
@@ -255,7 +294,7 @@ async function vistaFacturar(contenedor) {
                 mostrarMensaje('Revisá las líneas: descripción, cantidad (hasta 3 decimales) y precio (hasta 2).', 'error');
                 return;
             }
-            lineas.push({ descripcion: fila._descripcion.value.trim(), cantidad, precio_unitario: precio });
+            lineas.push({ descripcion: fila._descripcion.value.trim(), cantidad, precio_unitario: precio, articulo_id: fila._articuloId || null });
         }
         const cuerpo = {
             formulario_id: f.id, concepto: Number(selConcepto.value), moneda: selMoneda.value, lineas,
@@ -279,7 +318,7 @@ async function vistaFacturar(contenedor) {
 
     contenedor.append(form);
     actualizarCabecera();
-    agregarLinea();
+    agregarLinea(null);
     recalcular();
 }
 
