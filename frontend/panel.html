@@ -40,6 +40,10 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <span class="etiqueta-nav">Clientes</span>
         </button>
+        <button class="nav-btn" type="button" data-vista="articulos" title="Artículos">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82zM7 7h.01" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="etiqueta-nav">Artículos</span>
+        </button>
         <button class="nav-btn oculto" type="button" data-vista="razones" data-admin title="Razones sociales">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21V5l8-3v19M12 9h8v12M7 8h2M7 12h2M7 16h2M15 13h2M15 17h2M2 21h20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <span class="etiqueta-nav">Razones sociales</span>
@@ -85,6 +89,7 @@
             <section id="vista-facturar" class="vista oculto"></section>
             <section id="vista-comprobantes" class="vista oculto"></section>
             <section id="vista-clientes" class="vista oculto"></section>
+            <section id="vista-articulos" class="vista oculto"></section>
             <section id="vista-razones" class="vista oculto"></section>
             <section id="vista-sucursales" class="vista oculto"></section>
             <section id="vista-usuarios" class="vista oculto"></section>
@@ -108,6 +113,7 @@
     <p id="mensaje" class="mensaje mensaje-flotante" role="alert"></p>
     <script src="/static/js/api.js?v=0.5.0"></script>
     <script src="/static/js/clientes.js?v=0.5.0"></script>
+    <script src="/static/js/articulos.js?v=0.5.0"></script>
     <script src="/static/js/facturacion.js?v=0.5.0"></script>
     <script src="/static/js/admin-razones.js?v=0.5.0"></script>
     <script src="/static/js/admin-sucursales.js?v=0.5.0"></script>

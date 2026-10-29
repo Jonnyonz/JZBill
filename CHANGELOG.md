@@ -5,6 +5,9 @@ Cambios de JZBill, del más nuevo al más viejo.
 ## Sin publicar
 
 ### Agregado
+- Artículos (Fase 5, primera parte): pantalla Artículos con SKU único en todo el sistema, descripción, categoría,
+  alícuota de IVA de ARCA, costo de referencia (no participa del comprobante) y precios de venta finales (con IVA)
+  con vigencia e historial; buscador por SKU o descripción. Cargan y modifican administrador y supervisor.
 - Clientes compartidos entre razones sociales y grupos económicos; alta rápida con los datos de la constancia de
   inscripción de ARCA (lupa en Clientes y "Crear cliente nuevo" al facturar); el comprobante guarda el cliente.
 - Pie "Powered By JZTech Solutions" con logo en el ingreso y en el panel.
