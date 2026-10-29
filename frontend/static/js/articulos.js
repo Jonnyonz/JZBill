@@ -13,7 +13,7 @@ function hoyIso() { return new Date().toISOString().slice(0, 10); }
 // Formulario de alta o edicion. alGuardar(articulo) recibe el articulo guardado.
 function formularioArticulo(opciones, articulo, alGuardar, alCancelar) {
     const deTracker = !!(articulo && articulo.origen === 'tracker');
-    const sku = el('input', { name: 'sku', required: true, maxlength: 60, title: 'Sin espacios', value: articulo ? articulo.sku : '', readonly: deTracker });
+    const sku = el('input', { name: 'sku', required: true, maxlength: 100, value: articulo ? articulo.sku : '', readonly: deTracker });
     const descripcion = el('input', { name: 'descripcion', required: true, maxlength: 200, value: articulo ? articulo.descripcion : '', readonly: deTracker });
     const categoria = el('input', { name: 'categoria', maxlength: 80, value: articulo ? articulo.categoria : '', readonly: deTracker });
     const al21 = opciones.alicuotas.find(a => a.descripcion.replace(/\s/g, '') === '21%');
@@ -137,7 +137,7 @@ function tarjetaImportarTracker(opciones, alImportar) {
         const nada = !r.altas && !r.cambios;
         const flecha = ' \u2192 ';
         zona.append(el('div', { class: 'aviso-form' },
-            el('strong', {}, 'Tracker360 tiene ' + r.total_tracker + ' artículos: ' + r.altas + ' nuevos para Bill, ' + r.cambios + ' con cambios' + (r.omitidos ? ', ' + r.omitidos + ' que no entran (SKU vacío, con espacios o de más de 60 caracteres)' : '') + '.'),
+            el('strong', {}, 'Tracker360 tiene ' + r.total_tracker + ' artículos: ' + r.altas + ' nuevos para Bill, ' + r.cambios + ' con cambios' + (r.omitidos ? ', ' + r.omitidos + ' que no entran (SKU vacío o de más de 100 caracteres)' : '') + '.'),
             nada ? el('p', { class: 'sub' }, 'No hay nada que importar: Bill ya está igual que Tracker360.') : null,
             lista('Nuevos', r.detalle.altas, a => a.sku + ' · ' + a.descripcion + (a.categoria ? ' · ' + a.categoria : '') + (a.activo ? '' : ' · inactivo')),
             lista('Con cambios', r.detalle.cambios, c => c.sku + ': ' + (c.antes.origen !== 'tracker' ? 'pasa a ser de Tracker360' : '') +

@@ -27,7 +27,7 @@ MONEDAS_OFRECIDAS = ("PES", "DOL", "060", "012")   # pesos, dolar estadounidense
 
 
 class ArticuloDatos(BaseModel):
-    sku: str = Field(min_length=1, max_length=60)
+    sku: str = Field(min_length=1, max_length=100)
     descripcion: str = Field(min_length=1, max_length=200)
     categoria: str = Field(default="", max_length=80)
     alicuota_iva: int = Field(ge=1, le=99)
@@ -71,9 +71,10 @@ async def _validar(conn: asyncpg.Connection, data: ArticuloDatos, moneda: Option
         raise HTTPException(400, "Alícuota de IVA desconocida para ARCA.")
     if moneda is not None and not any(i["codigo"] == moneda for i in _codigos(vigentes, "TiposMonedas")):
         raise HTTPException(400, "Moneda desconocida para ARCA.")
-    sku = data.sku.strip()
-    if not sku or any(c.isspace() for c in sku):
-        raise HTTPException(400, "El SKU no puede tener espacios.")
+    # Mismas reglas que Tracker360, el dueno del SKU: hasta 100 caracteres, espacios internos permitidos.
+    sku = " ".join(data.sku.split())
+    if not sku:
+        raise HTTPException(400, "Poné un SKU.")
     if not data.descripcion.strip():
         raise HTTPException(400, "Poné una descripción.")
     return sku

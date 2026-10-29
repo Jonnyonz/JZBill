@@ -14,6 +14,8 @@ Cambios de JZBill, del más nuevo al más viejo.
   alícuota elegida y actualiza descripción, categoría y activo de los existentes. Un artículo manual con el mismo
   SKU pasa a ser de Tracker360. En los de Tracker360, SKU, descripción y categoría no se editan en Bill; costo, IVA
   y precios sí.
+- El SKU sigue las reglas de Tracker360: hasta 100 caracteres y con espacios adentro (se normalizan a uno). Antes
+  los artículos con espacios en el SKU quedaban afuera de la importación.
 - Clientes compartidos entre razones sociales y grupos económicos; alta rápida con los datos de la constancia de
   inscripción de ARCA (lupa en Clientes y "Crear cliente nuevo" al facturar); el comprobante guarda el cliente.
 - Pie "Powered By JZTech Solutions" con logo en el ingreso y en el panel.

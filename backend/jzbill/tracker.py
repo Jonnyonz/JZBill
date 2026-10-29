@@ -34,7 +34,7 @@ PAGINA = 500
 PREFIJO_CLAVE = "tch_"
 _PROPOSITO = "tracker:clave"
 # Limites de las columnas de Bill (migracion 0008): lo que no entra se omite y se informa.
-MAX_SKU, MAX_DESCRIPCION, MAX_CATEGORIA = 60, 200, 80
+MAX_SKU, MAX_DESCRIPCION, MAX_CATEGORIA = 100, 200, 80
 
 
 class ErrorTracker(Exception):
@@ -184,8 +184,8 @@ def _normalizar(item) -> Optional[dict]:
     """Item de Tracker a datos de Bill. None si no sirve (sin SKU o SKU que no entra en Bill)."""
     if not isinstance(item, dict):
         return None
-    sku = str(item.get("sku") or "").strip()
-    if not sku or len(sku) > MAX_SKU or any(c.isspace() for c in sku):
+    sku = " ".join(str(item.get("sku") or "").split())
+    if not sku or len(sku) > MAX_SKU:
         return None
     return {"sku": sku, "descripcion": (str(item.get("description") or "").strip() or sku)[:MAX_DESCRIPCION],
             "categoria": str(item.get("category") or "").strip()[:MAX_CATEGORIA], "activo": bool(item.get("is_active", True))}
