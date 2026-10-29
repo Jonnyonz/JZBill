@@ -226,6 +226,25 @@ async function vistaFacturar(contenedor) {
     const buscadorArticulo = el('input', { type: 'search', placeholder: 'Buscar artículo por SKU o descripción y agregarlo', 'aria-label': 'Buscar artículo', maxlength: 100 });
     const resultadosArticulo = el('div', {});
     let esperaArticulo = null;
+    // Enter: agrega el primer resultado (un lector de codigo de barras tipea el SKU y manda Enter).
+    buscadorArticulo.addEventListener('keydown', async (ev) => {
+        if (ev.key !== 'Enter') return;
+        ev.preventDefault();
+        const texto = buscadorArticulo.value.trim();
+        if (!texto) return;
+        clearTimeout(esperaArticulo);
+        let lista = [];
+        try { lista = await api('/api/articulos?limite=8&q=' + encodeURIComponent(texto)); } catch (e) { mostrarMensaje(e.message, 'error'); return; }
+        const exacto = lista.find(a => a.sku.toUpperCase() === texto.toUpperCase()) || (lista.length === 1 ? lista[0] : null);
+        if (!exacto) { buscadorArticulo.dispatchEvent(new Event('input')); if (!lista.length) mostrarMensaje('No hay artículos que coincidan.', 'error'); return; }
+        await elegirArticulo(exacto);
+    });
+    async function elegirArticulo(a) {
+        let detalle = a;
+        try { detalle = await api('/api/articulos/' + encodeURIComponent(a.id)); } catch (e) { mostrarMensaje(e.message, 'error'); return; }
+        agregarLinea({ id: a.id, sku: a.sku, descripcion: a.descripcion, precio: precioVigente(detalle, selMoneda.value) });
+        buscadorArticulo.value = ''; vaciar(resultadosArticulo); buscadorArticulo.focus();
+    }
     buscadorArticulo.addEventListener('input', () => {
         clearTimeout(esperaArticulo);
         const texto = buscadorArticulo.value.trim();
@@ -236,12 +255,7 @@ async function vistaFacturar(contenedor) {
             vaciar(resultadosArticulo).append(...(lista.length ? lista.map(a => {
                 const b = el('button', { type: 'button', class: 'opcion-cliente' }, el('span', {}, el('strong', { class: 'mono' }, a.sku), ' ', a.descripcion),
                     el('span', { class: 'sub mono' }, a.precio === null ? 'sin precio' : selMoneda.value === 'PES' ? formatoImporte(a.precio) : ''));
-                b.addEventListener('click', async () => {
-                    let detalle = a;
-                    try { detalle = await api('/api/articulos/' + encodeURIComponent(a.id)); } catch (e) { mostrarMensaje(e.message, 'error'); return; }
-                    agregarLinea({ id: a.id, sku: a.sku, descripcion: a.descripcion, precio: precioVigente(detalle, selMoneda.value) });
-                    buscadorArticulo.value = ''; vaciar(resultadosArticulo);
-                });
+                b.addEventListener('click', () => elegirArticulo(a));
                 return b;
             }) : [el('p', { class: 'ayuda' }, 'Sin resultados. Podés cargar una línea libre con "Agregar línea".')]));
         }, 250);

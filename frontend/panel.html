@@ -56,6 +56,10 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 20v-2a4 4 0 0 0-3-3.9M16 2.1a4 4 0 0 1 0 7.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <span class="etiqueta-nav">Usuarios</span>
         </button>
+        <button class="nav-btn oculto" type="button" data-vista="configuracion" data-admin title="Configuración">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="etiqueta-nav">Configuración</span>
+        </button>
         <button class="nav-btn oculto" type="button" data-vista="auditoria" data-admin title="Auditoría">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM9 12l2 2 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <span class="etiqueta-nav">Auditoría</span>
@@ -94,6 +98,7 @@
             <section id="vista-sucursales" class="vista oculto"></section>
             <section id="vista-usuarios" class="vista oculto"></section>
             <section id="vista-auditoria" class="vista oculto"></section>
+            <section id="vista-configuracion" class="vista oculto"></section>
             <section id="vista-cuenta" class="vista oculto">
                 <div class="tarjeta">
                     <h2>Cambiar contraseña</h2>
@@ -119,6 +124,7 @@
     <script src="/static/js/admin-sucursales.js?v=0.5.0"></script>
     <script src="/static/js/admin-usuarios.js?v=0.5.0"></script>
     <script src="/static/js/admin-auditoria.js?v=0.5.0"></script>
+    <script src="/static/js/configuracion.js?v=0.5.0"></script>
     <script src="/static/js/panel.js?v=0.5.0"></script>
 </body>
 </html>
