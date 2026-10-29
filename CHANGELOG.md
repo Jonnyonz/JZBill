@@ -8,6 +8,12 @@ Cambios de JZBill, del más nuevo al más viejo.
 - Artículos (Fase 5, primera parte): pantalla Artículos con SKU único en todo el sistema, descripción, categoría,
   alícuota de IVA de ARCA, costo de referencia (no participa del comprobante) y precios de venta finales (con IVA)
   con vigencia e historial; buscador por SKU o descripción. Cargan y modifican administrador y supervisor.
+- Conexión con Tracker360 (tarjeta en Artículos, solo administrador): URL y clave del canal (`tch_...`, guardada
+  cifrada), prueba de conexión y estado. Importar desde Tracker360: trae el catálogo (Tracker 1.5.0 o posterior),
+  muestra la vista previa (nuevos, cambios y omitidos) y al confirmar crea los artículos nuevos sin precio con la
+  alícuota elegida y actualiza descripción, categoría y activo de los existentes. Un artículo manual con el mismo
+  SKU pasa a ser de Tracker360. En los de Tracker360, SKU, descripción y categoría no se editan en Bill; costo, IVA
+  y precios sí.
 - Clientes compartidos entre razones sociales y grupos económicos; alta rápida con los datos de la constancia de
   inscripción de ARCA (lupa en Clientes y "Crear cliente nuevo" al facturar); el comprobante guarda el cliente.
 - Pie "Powered By JZTech Solutions" con logo en el ingreso y en el panel.

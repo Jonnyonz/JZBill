@@ -433,3 +433,7 @@ button.boton-icono svg { width: 18px; height: 18px; }
     .datos { grid-template-columns: 1fr; gap: 2px; }
     .datos dd { margin-bottom: 8px; }
 }
+
+/* Listas de detalle (vista previa de la importacion desde Tracker360) */
+.lista-simple { margin: 0.25rem 0 0.5rem 1.2rem; padding: 0; font-size: 0.9em; }
+.lista-simple li { margin: 0.15rem 0; }

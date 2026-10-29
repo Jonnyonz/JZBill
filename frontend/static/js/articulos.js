@@ -12,9 +12,10 @@ function hoyIso() { return new Date().toISOString().slice(0, 10); }
 
 // Formulario de alta o edicion. alGuardar(articulo) recibe el articulo guardado.
 function formularioArticulo(opciones, articulo, alGuardar, alCancelar) {
-    const sku = el('input', { name: 'sku', required: true, maxlength: 60, title: 'Sin espacios', value: articulo ? articulo.sku : '' });
-    const descripcion = el('input', { name: 'descripcion', required: true, maxlength: 200, value: articulo ? articulo.descripcion : '' });
-    const categoria = el('input', { name: 'categoria', maxlength: 80, value: articulo ? articulo.categoria : '' });
+    const deTracker = !!(articulo && articulo.origen === 'tracker');
+    const sku = el('input', { name: 'sku', required: true, maxlength: 60, title: 'Sin espacios', value: articulo ? articulo.sku : '', readonly: deTracker });
+    const descripcion = el('input', { name: 'descripcion', required: true, maxlength: 200, value: articulo ? articulo.descripcion : '', readonly: deTracker });
+    const categoria = el('input', { name: 'categoria', maxlength: 80, value: articulo ? articulo.categoria : '', readonly: deTracker });
     const al21 = opciones.alicuotas.find(a => a.descripcion.replace(/\s/g, '') === '21%');
     const selIva = el('select', { name: 'alicuota_iva', required: true }, el('option', { value: '' }, 'Elegí la alícuota'), opciones.alicuotas.map(a =>
         el('option', { value: a.codigo, selected: articulo ? String(articulo.alicuota_iva) === a.codigo : (al21 && a.codigo === al21.codigo) }, a.descripcion)));
@@ -37,6 +38,7 @@ function formularioArticulo(opciones, articulo, alGuardar, alCancelar) {
     guardar.disabled = sinParametros;
     const form = el('form', { class: 'form-cliente' },
         sinParametros ? el('p', { class: 'aviso-form error' }, 'Faltan los parámetros fiscales de ARCA. Un administrador tiene que actualizarlos en Razones sociales, Conexión con ARCA.') : null,
+        deTracker ? el('p', { class: 'aviso-form' }, 'Este artículo viene de Tracker360: el SKU, la descripción y la categoría se cambian allá y se actualizan al importar. Acá se manejan el IVA, el costo y los precios.') : null,
         campos, el('div', { class: 'acciones' }, guardar, alCancelar ? cancelar : null));
     form.addEventListener('submit', async (ev) => {
         ev.preventDefault();
@@ -76,6 +78,78 @@ function tarjetaPrecios(opciones, articulo, alCambiar) {
         el('p', { class: 'ayuda' }, 'El precio es el final, con IVA incluido. Rige el de fecha más reciente que ya empezó; un precio con fecha futura espera su día.'),
         el('div', { class: 'tabla-scroll' }, el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, 'Moneda'), el('th', {}, 'Importe'), el('th', {}, 'Vigente desde'))), cuerpo)),
         puedeEditarArticulos() ? form : null);
+}
+
+// ===== Conexion con Tracker360 (solo administrador) =====
+function tarjetaConexionTracker() {
+    const estado = el('p', { class: 'ayuda' }, 'Cargando...');
+    const url = el('input', { type: 'url', maxlength: 300, placeholder: 'https://wms.ejemplo.com.ar o http://192.168.1.10:8001', required: true, 'aria-label': 'URL de Tracker360' });
+    const clave = el('input', { type: 'password', maxlength: 200, placeholder: 'Clave del canal (tch_...)', autocomplete: 'off', 'aria-label': 'Clave del canal' });
+    const guardar = el('button', { type: 'submit' }, 'Guardar');
+    const probar = el('button', { type: 'button', class: 'secundario' }, 'Probar conexión');
+    const pintar = (d) => {
+        url.value = d.url || '';
+        clave.placeholder = d.configurada ? 'Clave guardada (dejar vacío para no cambiarla)' : 'Clave del canal (tch_...)';
+        vaciar(estado).append(!d.configurada ? 'Sin configurar. Creá un canal de venta en Tracker360 (Configuración, Canales de venta) y pegá acá su clave.'
+            : d.ultimo_error ? el('span', { class: 'etiqueta error' }, 'Último error: ' + d.ultimo_error)
+            : d.ultimo_ok ? el('span', { class: 'etiqueta ok' }, 'Conectado' + (d.canal ? ' como ' + d.canal : '') + ' · ' + fechaHora(d.ultimo_ok))
+            : 'Guardada, sin probar todavía.');
+    };
+    api('/api/integraciones/tracker').then(pintar).catch(e => vaciar(estado).append(e.message));
+    const form = el('form', { class: 'fila-form' }, url, clave, guardar, probar);
+    form.addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        const d = await conBoton(guardar, () => api('/api/integraciones/tracker', { method: 'PUT', body: { url: url.value, clave: clave.value } }));
+        if (d) { clave.value = ''; mostrarMensaje('Conexión guardada.', 'ok'); pintar(d); }
+    });
+    probar.addEventListener('click', async () => {
+        const d = await conBoton(probar, () => api('/api/integraciones/tracker/probar', { method: 'POST', body: {} }));
+        if (d) { mostrarMensaje('Tracker360 responde' + (d.canal ? ' (canal ' + d.canal + ')' : '') + '.', 'ok'); pintar(d); }
+        else api('/api/integraciones/tracker').then(pintar).catch(() => {});
+    });
+    return el('div', { class: 'tarjeta' }, el('h2', {}, 'Conexión con Tracker360'),
+        el('p', { class: 'ayuda' }, 'Tracker360 es el dueño del catálogo: SKU, descripción y categoría. Bill agrega el IVA, el costo y los precios. La clave se guarda cifrada.'),
+        estado, form);
+}
+
+// ===== Importar el catalogo desde Tracker360 (administrador y supervisor) =====
+function tarjetaImportarTracker(opciones, alImportar) {
+    const zona = el('div', {});
+    const previa = el('button', { type: 'button' }, 'Importar desde Tracker360');
+    previa.addEventListener('click', async () => {
+        vaciar(zona);
+        const r = await conBoton(previa, () => api('/api/articulos/importar-tracker/previa', { method: 'POST', body: {} }));
+        if (!r) return;
+        const lista = (titulo, filas, pinta) => filas.length ? el('details', { open: filas.length <= 20 },
+            el('summary', {}, titulo + ' (' + filas.length + (filas.length === 200 ? ' o más' : '') + ')'),
+            el('ul', { class: 'lista-simple' }, filas.map(f => el('li', {}, pinta(f))))) : null;
+        const al21 = opciones.alicuotas.find(a => a.descripcion.replace(/\s/g, '') === '21%');
+        const selIva = el('select', { 'aria-label': 'Alícuota de IVA para los artículos nuevos' }, opciones.alicuotas.map(a =>
+            el('option', { value: a.codigo, selected: al21 ? a.codigo === al21.codigo : false }, a.descripcion)));
+        const confirmar = el('button', { type: 'button' }, 'Confirmar importación');
+        confirmar.addEventListener('click', async () => {
+            const d = await conBoton(confirmar, () => api('/api/articulos/importar-tracker', { method: 'POST', body: { alicuota_iva: Number(selIva.value) } }));
+            if (!d) return;
+            vaciar(zona).append(el('p', { class: 'aviso-form' }, 'Importado: ' + d.altas + ' artículos nuevos y ' + d.cambios + ' actualizados' + (d.omitidos ? '; ' + d.omitidos + ' omitidos.' : '.')));
+            mostrarMensaje('Catálogo importado.', 'ok');
+            alImportar();
+        });
+        const nada = !r.altas && !r.cambios;
+        const flecha = ' \u2192 ';
+        zona.append(el('div', { class: 'aviso-form' },
+            el('strong', {}, 'Tracker360 tiene ' + r.total_tracker + ' artículos: ' + r.altas + ' nuevos para Bill, ' + r.cambios + ' con cambios' + (r.omitidos ? ', ' + r.omitidos + ' que no entran (SKU vacío, con espacios o de más de 60 caracteres)' : '') + '.'),
+            nada ? el('p', { class: 'sub' }, 'No hay nada que importar: Bill ya está igual que Tracker360.') : null,
+            lista('Nuevos', r.detalle.altas, a => a.sku + ' · ' + a.descripcion + (a.categoria ? ' · ' + a.categoria : '') + (a.activo ? '' : ' · inactivo')),
+            lista('Con cambios', r.detalle.cambios, c => c.sku + ': ' + (c.antes.origen !== 'tracker' ? 'pasa a ser de Tracker360' : '') +
+                (c.antes.descripcion !== c.descripcion ? ' · descripción "' + c.antes.descripcion + '"' + flecha + '"' + c.descripcion + '"' : '') +
+                (c.antes.categoria !== c.categoria ? ' · categoría "' + c.antes.categoria + '"' + flecha + '"' + c.categoria + '"' : '') +
+                (c.antes.activo !== c.activo ? (c.activo ? ' · se activa' : ' · se desactiva') : '')),
+            lista('Omitidos', r.detalle.omitidos, s => s),
+            nada ? null : el('div', { class: 'fila-form' }, r.altas ? el('label', {}, 'IVA de los nuevos ', selIva) : null, confirmar)));
+    });
+    return el('div', { class: 'tarjeta' }, el('div', { class: 'titulo-tarjeta' }, el('h2', {}, 'Importar desde Tracker360'), previa),
+        el('p', { class: 'ayuda' }, 'Trae el catálogo de Tracker360 y muestra qué cambiaría antes de aplicar. Los artículos nuevos quedan sin precio: se cargan acá. Costo, IVA y precios de los existentes no se tocan.'),
+        zona);
 }
 
 // ===== Pantalla Articulos =====
@@ -129,7 +203,8 @@ async function vistaArticulos(contenedor) {
                 el('td', {}, alicuota(a.alicuota_iva)),
                 el('td', { class: 'mono' }, formatoImporte(a.costo)),
                 el('td', { class: 'mono' }, a.precio === null ? el('span', { class: 'etiqueta' }, 'Sin precio') : formatoImporte(a.precio)),
-                el('td', {}, a.activo ? el('span', { class: 'etiqueta ok' }, 'Activo') : el('span', { class: 'etiqueta' }, 'Inactivo')),
+                el('td', {}, a.activo ? el('span', { class: 'etiqueta ok' }, 'Activo') : el('span', { class: 'etiqueta' }, 'Inactivo'),
+                    a.origen === 'tracker' ? el('span', { class: 'etiqueta acento' }, 'Tracker360') : null),
                 el('td', {}, puedeEditar ? editar : null));
             cuerpo.append(fila);
         }
@@ -138,6 +213,8 @@ async function vistaArticulos(contenedor) {
     inactivos.addEventListener('change', buscar);
 
     contenedor.append(
+        esAdmin() ? tarjetaConexionTracker() : null,
+        puedeEditar ? tarjetaImportarTracker(opciones, buscar) : null,
         el('div', { class: 'tarjeta' },
             el('div', { class: 'titulo-tarjeta' }, el('h2', {}, 'Artículos'), puedeEditar ? nuevo : null),
             el('p', { class: 'ayuda' }, 'El SKU es único en todo el sistema y es la clave para vincular con Tracker360. El costo es solo de referencia para la rentabilidad; el precio de venta es el final, con IVA incluido.'),
