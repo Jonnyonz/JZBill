@@ -25,6 +25,9 @@ Cambios de JZBill, del más nuevo al más viejo.
   Las líneas libres siguen igual. Enter en el buscador agrega el artículo cuyo SKU coincide (sirve con lector de
   código de barras); con un solo resultado, agrega ese.
 - Pantalla Configuración (solo administrador): la conexión con Tracker360 se mudó ahí desde Artículos.
+- Modificaciones masivas (Artículos, administrador y supervisor): subir o bajar precios y/o costos por porcentaje o
+  monto fijo, a todos los artículos activos o a una categoría, con vista previa y confirmación. Los artículos sin
+  precio se informan y no se tocan; si alguno quedara por debajo de cero no se aplica nada.
 - Artículos: el alta y la edición se abren en una ventana flotante sobre la lista (Esc, Cancelar o la X la cierran),
   en vez de al final de la página.
 - Clientes compartidos entre razones sociales y grupos económicos; alta rápida con los datos de la constancia de

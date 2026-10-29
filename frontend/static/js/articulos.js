@@ -120,6 +120,46 @@ function tarjetaImportarTracker(opciones, alImportar) {
         zona);
 }
 
+// ===== Modificaciones masivas de precios y costos (administrador y supervisor) =====
+function tarjetaMasivo(opciones, alAplicar) {
+    const selQue = el('select', { 'aria-label': 'Qué modificar' }, el('option', { value: 'precio' }, 'Precios'), el('option', { value: 'costo' }, 'Costos'), el('option', { value: 'ambos' }, 'Precios y costos'));
+    const selTipo = el('select', { 'aria-label': 'Tipo de cambio' }, el('option', { value: 'porcentaje' }, 'Porcentaje'), el('option', { value: 'monto' }, 'Monto fijo'));
+    const valor = el('input', { type: 'number', step: '0.01', required: true, placeholder: 'Valor (negativo baja)', 'aria-label': 'Valor', inputmode: 'decimal' });
+    const selCategoria = el('select', { 'aria-label': 'Alcance' }, el('option', { value: '' }, 'Todos los artículos activos'));
+    for (const c of (opciones.categorias || [])) selCategoria.append(el('option', { value: c.categoria }, c.categoria + ' (' + c.articulos + ')'));
+    const desde = el('input', { type: 'date', value: hoyIso(), 'aria-label': 'Vigente desde' });
+    const previa = el('button', { type: 'submit' }, 'Vista previa');
+    const zona = el('div', {});
+    const flecha = ' \u2192 ';
+    const cuerpo = () => ({ que: selQue.value, tipo: selTipo.value, valor: valor.value, categoria: selCategoria.value || null, vigencia_desde: desde.value || null });
+    const form = el('form', { class: 'fila-form' }, selQue, selTipo, valor, selCategoria, el('label', {}, 'desde ', desde), previa);
+    form.addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        vaciar(zona);
+        const r = await conBoton(previa, () => api('/api/articulos/masivo/previa', { method: 'POST', body: cuerpo() }));
+        if (!r) return;
+        const confirmar = el('button', { type: 'button' }, 'Confirmar: aplicar a ' + r.cambios + ' artículos');
+        confirmar.addEventListener('click', async () => {
+            const d = await conBoton(confirmar, () => api('/api/articulos/masivo', { method: 'POST', body: cuerpo() }));
+            if (!d) return;
+            vaciar(zona).append(el('p', { class: 'aviso-form' }, 'Aplicado a ' + d.cambios + ' artículos.'));
+            mostrarMensaje('Modificación masiva aplicada.', 'ok');
+            alAplicar();
+        });
+        zona.append(el('div', { class: 'aviso-form' },
+            el('strong', {}, r.alcance + ' artículos en el alcance: ' + r.cambios + ' cambian' + (r.sin_precio ? ', ' + r.sin_precio + ' sin precio (no se tocan)' : '') + (r.negativos ? ', ' + r.negativos + ' quedarían por debajo de cero (se frena)' : '') + '.'),
+            r.cambios ? el('div', { class: 'tabla-scroll' }, el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, 'SKU'), el('th', {}, 'Descripción'), el('th', {}, 'Precio'), el('th', {}, 'Costo'))),
+                el('tbody', {}, r.detalle.map(c => el('tr', {}, el('td', { class: 'mono sin-corte' }, c.sku), el('td', {}, c.descripcion),
+                    el('td', { class: 'mono' }, c.precio_nuevo === null ? '' : formatoImporte(c.precio_actual) + flecha + formatoImporte(c.precio_nuevo)),
+                    el('td', { class: 'mono' }, c.costo_nuevo === null ? '' : formatoImporte(c.costo_actual) + flecha + formatoImporte(c.costo_nuevo))))))) : null,
+            r.detalle.length < r.cambios ? el('p', { class: 'sub' }, 'Se muestran los primeros ' + r.detalle.length + '.') : null,
+            r.cambios && !r.negativos ? el('div', { class: 'acciones' }, confirmar) : null));
+    });
+    return el('div', { class: 'tarjeta' }, el('h2', {}, 'Modificaciones masivas'),
+        el('p', { class: 'ayuda' }, 'Sube o baja precios y costos de todos los artículos activos o de una categoría, por porcentaje o monto fijo (negativo para bajar). Los precios nuevos quedan con la fecha elegida y el anterior en el historial. Primero la vista previa, después confirmás.'),
+        form, zona);
+}
+
 // ===== Precios y costos por CSV (administrador y supervisor) =====
 function tarjetaPreciosCsv(alAplicar) {
     const archivo = el('input', { type: 'file', accept: '.csv,text/csv', 'aria-label': 'Archivo CSV' });
@@ -236,6 +276,7 @@ async function vistaArticulos(contenedor) {
 
     contenedor.append(
         puedeEditar ? tarjetaImportarTracker(opciones, buscar) : null,
+        puedeEditar ? tarjetaMasivo(opciones, buscar) : null,
         puedeEditar ? tarjetaPreciosCsv(buscar) : null,
         el('div', { class: 'tarjeta' },
             el('div', { class: 'titulo-tarjeta' }, el('h2', {}, 'Artículos'), puedeEditar ? nuevo : null),

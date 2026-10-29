@@ -7,8 +7,8 @@ validado contra los parametros vigentes y guardado como dato. El costo nunca par
 import csv
 import io
 from datetime import date, datetime
-from decimal import Decimal, InvalidOperation
-from typing import Optional
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from typing import Literal, Optional
 
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -131,7 +131,9 @@ async def opciones(usuario: dict = Depends(require_usuario), conn: asyncpg.Conne
     vigentes = await _vigentes(conn)
     simple = lambda tipo: [{"codigo": i["codigo"], "descripcion": i["descripcion"]} for i in _codigos(vigentes, tipo)]
     monedas = {m["codigo"]: m for m in simple("TiposMonedas")}
-    return {"alicuotas": simple("TiposIva"), "monedas": [monedas[c] for c in MONEDAS_OFRECIDAS if c in monedas]}
+    categorias = await conn.fetch("SELECT categoria, count(*) AS n FROM articulos WHERE activo AND categoria <> '' GROUP BY categoria ORDER BY lower(categoria)")
+    return {"alicuotas": simple("TiposIva"), "monedas": [monedas[c] for c in MONEDAS_OFRECIDAS if c in monedas],
+            "categorias": [{"categoria": f["categoria"], "articulos": f["n"]} for f in categorias]}
 
 
 @router.get("")
@@ -373,3 +375,90 @@ async def precios_csv_aplicar(data: ArchivoCsv, request: Request, usuario: dict 
                         f"{len(c['cambios'])} artículos actualizados por CSV ({c['filas']} filas, "
                         f"{len(c['no_encontrados'])} SKU no encontrados).", client_ip(request))
     return _resumen_csv(c)
+
+
+# ===== Modificaciones masivas desde la pantalla (pedido de Jonny 2026-10-29) =====
+
+class Masivo(BaseModel):
+    que: Literal["precio", "costo", "ambos"] = "precio"
+    tipo: Literal["porcentaje", "monto"] = "porcentaje"
+    valor: Decimal = Field(max_digits=15, decimal_places=2)   # negativo = baja
+    categoria: Optional[str] = Field(default=None, max_length=80)   # None: todos los articulos activos
+    vigencia_desde: Optional[date] = None   # para el precio; sin fecha: hoy
+
+
+def _aplicar(base: Decimal, data: Masivo) -> Decimal:
+    nuevo = base * (1 + data.valor / 100) if data.tipo == "porcentaje" else base + data.valor
+    return nuevo.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+async def _comparar_masivo(conn: asyncpg.Connection, data: Masivo) -> dict:
+    if data.valor == 0:
+        raise HTTPException(400, "El valor no puede ser cero.")
+    if data.tipo == "porcentaje" and data.valor <= -100:
+        raise HTTPException(400, "Un porcentaje de baja tiene que ser mayor que -100.")
+    categoria = (data.categoria or "").strip()
+    filas = await conn.fetch(_SELECT + " WHERE a.activo AND ($1 = '' OR lower(a.categoria) = lower($1)) ORDER BY a.sku", categoria)
+    cambios, sin_precio, negativos = [], 0, 0
+    toca_precio, toca_costo = data.que in ("precio", "ambos"), data.que in ("costo", "ambos")
+    for a in filas:
+        c = {"id": a["id"], "sku": a["sku"], "descripcion": a["descripcion"], "precio_actual": None, "precio_nuevo": None,
+             "costo_actual": str(a["costo"]), "costo_nuevo": None}
+        if toca_precio:
+            if a["precio"] is None:
+                sin_precio += 1
+            else:
+                nuevo = _aplicar(a["precio"], data)
+                if nuevo < 0:
+                    negativos += 1
+                    continue
+                c["precio_actual"], c["precio_nuevo"] = str(a["precio"]), str(nuevo)
+        if toca_costo:
+            nuevo = _aplicar(a["costo"], data)
+            if nuevo < 0:
+                negativos += 1
+                continue
+            if nuevo != a["costo"]:
+                c["costo_nuevo"] = str(nuevo)
+        if c["precio_nuevo"] is not None or c["costo_nuevo"] is not None:
+            cambios.append(c)
+    return {"alcance": len(filas), "cambios": cambios, "sin_precio": sin_precio if toca_precio else 0, "negativos": negativos,
+            "vigencia_desde": (data.vigencia_desde or date.today()).isoformat()}
+
+
+def _resumen_masivo(c: dict, maximo: int = 500) -> dict:
+    return {"alcance": c["alcance"], "cambios": len(c["cambios"]), "sin_precio": c["sin_precio"], "negativos": c["negativos"],
+            "vigencia_desde": c["vigencia_desde"],
+            "detalle": [{k: v for k, v in x.items() if k != "id"} for x in c["cambios"][:maximo]]}
+
+
+@router.post("/masivo/previa")
+async def masivo_previa(data: Masivo, usuario: dict = Depends(editor), conn: asyncpg.Connection = Depends(get_conn)):
+    """Que cambiaria. Los articulos sin precio no tienen base para un cambio de precio y se informan; los que
+    quedarian por debajo de cero se informan y no se tocan."""
+    return _resumen_masivo(await _comparar_masivo(conn, data))
+
+
+@router.post("/masivo")
+async def masivo_aplicar(data: Masivo, request: Request, usuario: dict = Depends(editor), conn: asyncpg.Connection = Depends(get_conn)):
+    c = await _comparar_masivo(conn, data)
+    if c["negativos"]:
+        raise HTTPException(400, f"{c['negativos']} artículos quedarían por debajo de cero. No se aplicó nada.")
+    desde = date.fromisoformat(c["vigencia_desde"])
+    async with conn.transaction():
+        for x in c["cambios"]:
+            if x["precio_nuevo"] is not None:
+                await conn.execute("""
+                    INSERT INTO articulos_precios (articulo_id, moneda, importe, vigencia_desde, creado_por) VALUES ($1, 'PES', $2, $3, $4)
+                    ON CONFLICT (articulo_id, moneda, vigencia_desde) DO UPDATE SET importe = EXCLUDED.importe,
+                        creado_por = EXCLUDED.creado_por, creado_en = now()
+                """, uuid_o_404(x["id"]), Decimal(x["precio_nuevo"]), desde, usuario["id"])
+            if x["costo_nuevo"] is not None:
+                await conn.execute("UPDATE articulos SET costo = $2 WHERE id = $1", uuid_o_404(x["id"]), Decimal(x["costo_nuevo"]))
+            await conn.execute("UPDATE articulos SET actualizado_en = now() WHERE id = $1", uuid_o_404(x["id"]))
+        signo = "+" if data.valor > 0 else ""
+        await registrar(conn, usuario["id"], usuario["usuario"], "ARTICULOS_MASIVO",
+                        f"{data.que} {signo}{data.valor}{'%' if data.tipo == 'porcentaje' else ''} "
+                        f"{'en ' + data.categoria.strip() if (data.categoria or '').strip() else 'en todos'}: {len(c['cambios'])} artículos.",
+                        client_ip(request))
+    return _resumen_masivo(c)
