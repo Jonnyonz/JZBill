@@ -175,6 +175,9 @@ async def modificar(articulo_id: str, data: ArticuloCambios, request: Request, u
                     conn: asyncpg.Connection = Depends(get_conn)):
     actual = await _articulo_o_404(conn, articulo_id)
     sku = await _validar(conn, data)
+    # Lo que viene de Tracker360 se cambia en Tracker360 (al importar vuelve a sincronizarse).
+    if actual["origen"] == "tracker" and (sku, data.descripcion.strip(), data.categoria.strip()) != (actual["sku"], actual["descripcion"], actual["categoria"]):
+        raise HTTPException(409, "Este artículo viene de Tracker360: el SKU, la descripción y la categoría se cambian allá.")
     try:
         async with conn.transaction():
             await conn.execute("""
