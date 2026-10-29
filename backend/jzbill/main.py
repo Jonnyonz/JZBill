@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from jztech_core.security_headers import SecurityHeadersMiddleware
 
-from jzbill import (__version__, arca_api, auditoria, auth, certificados, clientes, comprobantes, contexto, db, formularios,
+from jzbill import (__version__, arca_api, articulos, auditoria, auth, certificados, clientes, comprobantes, contexto, db, formularios,
                     impresion, razones_sociales, sucursales, usuarios)
 
 logger = logging.getLogger(__name__)
@@ -83,6 +83,7 @@ app.include_router(impresion.router)
 app.include_router(clientes.router)
 app.include_router(clientes.router_grupos)
 app.include_router(clientes.router_padron)
+app.include_router(articulos.router)
 
 
 @app.get("/api/health")
