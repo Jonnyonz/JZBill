@@ -2,9 +2,19 @@
 
 Cambios de JZBill, del más nuevo al más viejo.
 
-## Sin publicar
+## 0.6.0 - 2026-10-30
+
+Fase 5: artículos, precios, acciones masivas, Tracker360 y ofertas.
 
 ### Agregado
+- Ofertas (Fase 5, cierre): pantalla Ofertas en la barra lateral (ven todos; crean y modifican administrador y
+  supervisor). Una oferta descuenta un porcentaje o un monto fijo por unidad sobre el precio de lista, a todos los
+  artículos, a una categoría o a una lista de artículos; con vigencia desde y hasta (opcional) y opcional por medio de
+  pago (la condición de venta del comprobante). Al facturar, el sistema propone la mejor oferta vigente en cada
+  línea con artículo; el cajero la ve bajo la descripción y puede quitarla. Al emitir, el servidor vuelve a validar y
+  calcular la oferta, y la línea guarda el precio de lista, el descuento y el detalle (también en el impreso): lo
+  emitido no cambia aunque la oferta cambie o se desactive. Sin "unidad gratis" ni combinaciones; si aplican varias,
+  gana la de mayor descuento. Un monto fijo está en pesos: en otra moneda solo aplican los porcentajes.
 - Artículos (Fase 5, primera parte): pantalla Artículos con SKU único en todo el sistema, descripción, categoría,
   alícuota de IVA de ARCA, costo de referencia (no participa del comprobante) y precios de venta finales (con IVA)
   con vigencia e historial; buscador por SKU o descripción. Cargan y modifican administrador y supervisor.

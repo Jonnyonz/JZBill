@@ -3,6 +3,24 @@
     "cuerpo": false,
     "params": []
   },
+  "GET /api/articulos": {
+    "cuerpo": false,
+    "params": [
+      "query:incluir_inactivos",
+      "query:limite",
+      "query:q"
+    ]
+  },
+  "GET /api/articulos/opciones": {
+    "cuerpo": false,
+    "params": []
+  },
+  "GET /api/articulos/{articulo_id}": {
+    "cuerpo": false,
+    "params": [
+      "path:articulo_id"
+    ]
+  },
   "GET /api/auditoria": {
     "cuerpo": false,
     "params": [
@@ -61,6 +79,22 @@
   "GET /api/health": {
     "cuerpo": false,
     "params": []
+  },
+  "GET /api/integraciones/tracker": {
+    "cuerpo": false,
+    "params": []
+  },
+  "GET /api/ofertas": {
+    "cuerpo": false,
+    "params": [
+      "query:incluir_inactivas"
+    ]
+  },
+  "GET /api/ofertas/{oferta_id}": {
+    "cuerpo": false,
+    "params": [
+      "path:oferta_id"
+    ]
   },
   "GET /api/padron/{cuit}": {
     "cuerpo": false,
@@ -170,6 +204,40 @@
       "path:razon_social_id"
     ]
   },
+  "POST /api/articulos": {
+    "cuerpo": true,
+    "params": []
+  },
+  "POST /api/articulos/importar-tracker": {
+    "cuerpo": true,
+    "params": []
+  },
+  "POST /api/articulos/importar-tracker/previa": {
+    "cuerpo": false,
+    "params": []
+  },
+  "POST /api/articulos/masivo": {
+    "cuerpo": true,
+    "params": []
+  },
+  "POST /api/articulos/masivo/previa": {
+    "cuerpo": true,
+    "params": []
+  },
+  "POST /api/articulos/precios-csv": {
+    "cuerpo": true,
+    "params": []
+  },
+  "POST /api/articulos/precios-csv/previa": {
+    "cuerpo": true,
+    "params": []
+  },
+  "POST /api/articulos/{articulo_id}/precios": {
+    "cuerpo": true,
+    "params": [
+      "path:articulo_id"
+    ]
+  },
   "POST /api/auth/clave": {
     "cuerpo": true,
     "params": []
@@ -199,6 +267,18 @@
     "params": []
   },
   "POST /api/grupos-clientes": {
+    "cuerpo": true,
+    "params": []
+  },
+  "POST /api/integraciones/tracker/probar": {
+    "cuerpo": false,
+    "params": []
+  },
+  "POST /api/ofertas": {
+    "cuerpo": true,
+    "params": []
+  },
+  "POST /api/ofertas/evaluar": {
     "cuerpo": true,
     "params": []
   },
@@ -277,6 +357,12 @@
     "cuerpo": true,
     "params": []
   },
+  "PUT /api/articulos/{articulo_id}": {
+    "cuerpo": true,
+    "params": [
+      "path:articulo_id"
+    ]
+  },
   "PUT /api/clientes/{cliente_id}": {
     "cuerpo": true,
     "params": [
@@ -286,6 +372,16 @@
   "PUT /api/contexto": {
     "cuerpo": true,
     "params": []
+  },
+  "PUT /api/integraciones/tracker": {
+    "cuerpo": true,
+    "params": []
+  },
+  "PUT /api/ofertas/{oferta_id}": {
+    "cuerpo": true,
+    "params": [
+      "path:oferta_id"
+    ]
   },
   "PUT /api/razones-sociales/{razon_social_id}": {
     "cuerpo": true,
