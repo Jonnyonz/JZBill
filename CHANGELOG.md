@@ -2,6 +2,29 @@
 
 Cambios de JZBill, del más nuevo al más viejo.
 
+## 0.9.0 - 2026-10-30
+
+Fase 8: integración con Tracker360 (stock y ventas por la API de canales).
+
+### Agregado
+- Foto de stock de Tracker360: cada 15 minutos (`TRACKER_STOCK_MINUTOS`) y a pedido desde Configuración, JZBill lee
+  el stock de todos los artículos por la API de canales y marca los artículos cuyo SKU no existe en Tracker. Artículos
+  muestra la columna Stock; Facturar muestra el stock junto a cada artículo del buscador y en la línea, en rojo si la
+  cantidad supera lo leído. Solo avisa: nunca frena la venta. Cada venta descuenta la foto local y cada nota de
+  crédito la devuelve hasta la próxima lectura.
+- Cola de ventas a Tracker360: cada comprobante de modo empresa con artículos entra en Tracker como pedido del canal
+  (referencia `JZB <cuit> <comprobante> <pv>-<número>`, comprador, entrega en mostrador, líneas por SKU); una nota de
+  crédito asociada lo cancela parcialmente. La cola se procesa en orden cada 30 segundos (`TRACKER_COLA_SEGUNDOS`) y a
+  pedido. Con Tracker caído la factura se emite igual y la cola se vacía en orden cuando vuelve; un rechazo de Tracker
+  (SKU inexistente, pedido ya despachado) deja ese item con error y la cola sigue: el administrador lo reintenta o lo
+  descarta desde Configuración, tarjeta "Tracker360: stock y cola de ventas". Lo de modo prueba nunca se informa.
+
+### Cambiado
+- Contrato de la API: 115 operaciones (5 nuevas bajo `/api/integraciones/tracker`: cola, procesar, reintentar,
+  descartar, stock); los artículos devuelven `stock`, `stock_leido_en` y `en_tracker`.
+- Migración 0014 (stock_foto, cola_tracker, `articulos.en_tracker`, fechas de lectura en tracker_conexion).
+- `.env.example`: `TRACKER_COLA_SEGUNDOS` y `TRACKER_STOCK_MINUTOS` (opcionales).
+
 ## 0.8.0 - 2026-10-30
 
 Fase 7: reportes, rentabilidad y correo.

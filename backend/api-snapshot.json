@@ -130,6 +130,10 @@
     "cuerpo": false,
     "params": []
   },
+  "GET /api/integraciones/tracker/cola": {
+    "cuerpo": false,
+    "params": []
+  },
   "GET /api/ofertas": {
     "cuerpo": false,
     "params": [
@@ -430,7 +434,27 @@
     "cuerpo": true,
     "params": []
   },
+  "POST /api/integraciones/tracker/cola/procesar": {
+    "cuerpo": false,
+    "params": []
+  },
+  "POST /api/integraciones/tracker/cola/{item_id}/descartar": {
+    "cuerpo": false,
+    "params": [
+      "path:item_id"
+    ]
+  },
+  "POST /api/integraciones/tracker/cola/{item_id}/reintentar": {
+    "cuerpo": false,
+    "params": [
+      "path:item_id"
+    ]
+  },
   "POST /api/integraciones/tracker/probar": {
+    "cuerpo": false,
+    "params": []
+  },
+  "POST /api/integraciones/tracker/stock": {
     "cuerpo": false,
     "params": []
   },
