@@ -11,8 +11,8 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from jztech_core.security_headers import SecurityHeadersMiddleware
 
-from jzbill import (__version__, arca_api, articulos, auditoria, auth, caja, certificados, clientes, tracker, comprobantes, contexto, db,
-                    formularios, impresion, ofertas, razones_sociales, sucursales, usuarios)
+from jzbill import (__version__, arca_api, articulos, auditoria, auth, caja, certificados, clientes, tracker, comprobantes, contexto, correo,
+                    db, formularios, impresion, ofertas, razones_sociales, reportes, sucursales, usuarios)
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +86,9 @@ app.include_router(clientes.router_padron)
 app.include_router(articulos.router)
 app.include_router(ofertas.router)
 app.include_router(caja.router)
+app.include_router(reportes.router)
+app.include_router(correo.router)
+app.include_router(correo.router_envios)
 app.include_router(tracker.router)
 app.include_router(tracker.router_importacion)
 

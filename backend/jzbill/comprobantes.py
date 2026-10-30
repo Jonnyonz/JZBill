@@ -375,11 +375,14 @@ async def emitir(data: ComprobanteNuevo, request: Request, ctx: dict = Depends(c
         raise HTTPException(422, f"ARCA rechazó el comprobante (el número queda libre): {motivos}"[:1000])
     except asyncpg.LockNotAvailableError:
         raise HTTPException(503, "Otra caja está emitiendo en este punto de venta. Probá de nuevo en unos segundos.")
+    # Ya emitido y confirmado: envio automatico por correo si la razon social lo tiene (Fase 7). Nunca frena la emision.
+    from jzbill import correo   # import tardio: correo importa impresion, que importa este modulo
+    await correo.enviar_automatico(conn, await conn.fetchrow("SELECT * FROM comprobantes WHERE id = $1", comprobante_id), usuario["id"])
     return await detalle_comprobante(conn, comprobante_id)
 
 
 # --- Consulta ---
-def _salida(c, lineas=None, pagos=None) -> dict:
+def _salida(c, lineas=None, pagos=None, envios=None) -> dict:
     salida = {"id": str(c["id"]), "nombre": c["nombre"], "letra": c["letra"], "electronico": c["electronico"],
               "modo": c["modo"], "codigo_arca": c["codigo_arca"], "punto_venta": c["punto_venta"], "numero": c["numero"],
               "fecha": c["fecha"].isoformat(), "concepto": c["concepto"],
@@ -405,13 +408,18 @@ def _salida(c, lineas=None, pagos=None) -> dict:
         salida["observaciones_arca"] = json.loads(obs) if isinstance(obs, str) else obs
     if pagos is not None:
         salida["pagos"] = pagos
+    if envios is not None:
+        salida["envios"] = envios
     return salida
 
 
 async def detalle_comprobante(conn: asyncpg.Connection, comprobante_id) -> dict:
     c = await conn.fetchrow("SELECT * FROM comprobantes WHERE id = $1", comprobante_id)
     lineas = await conn.fetch("SELECT * FROM comprobante_lineas WHERE comprobante_id = $1 ORDER BY orden", c["id"])
-    return _salida(c, lineas, await caja.pagos_de(conn, c["id"]))
+    envios = await conn.fetch("SELECT * FROM comprobante_envios WHERE comprobante_id = $1 ORDER BY creado_en", c["id"])
+    return _salida(c, lineas, await caja.pagos_de(conn, c["id"]),
+                   [{"destinatario": e["destinatario"], "estado": e["estado"], "detalle": e["detalle"], "automatico": e["automatico"],
+                     "creado_en": e["creado_en"].isoformat()} for e in envios])
 
 
 async def comprobante_visible(conn: asyncpg.Connection, ctx: dict, comprobante_id: str) -> asyncpg.Record:

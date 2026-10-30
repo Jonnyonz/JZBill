@@ -110,6 +110,7 @@ async function vistaFacturar(contenedor) {
     const selVenta = el('select', {}, CONDICIONES_VENTA.map(v => el('option', { value: v }, v)));
     const selCondicion = el('select', {});
     let clienteId = null;
+    let clienteEmail = '';
     const buscadorCliente = el('input', { type: 'search', placeholder: 'Buscar cliente por nombre o documento', 'aria-label': 'Buscar cliente', maxlength: 100 });
     const resultados = el('div', { class: 'resultados-cliente' });
     const elegido = el('div', {});
@@ -118,6 +119,7 @@ async function vistaFacturar(contenedor) {
 
     function usarCliente(c) {
         clienteId = c.id;
+        clienteEmail = c.email || '';
         selDoc.value = String(c.doc_tipo);
         nroDoc.value = c.doc_nro;
         nombre.value = c.nombre;
@@ -128,7 +130,7 @@ async function vistaFacturar(contenedor) {
         buscadorCliente.value = '';
         const quitar = el('button', { type: 'button', class: 'secundario' }, 'Quitar');
         quitar.addEventListener('click', () => {
-            clienteId = null; vaciar(elegido);
+            clienteId = null; clienteEmail = ''; vaciar(elegido);
             nroDoc.value = '0'; nombre.value = ''; domicilio.value = '';
             if (docCF) selDoc.value = '99';
             actualizarCabecera();
@@ -466,7 +468,7 @@ async function vistaFacturar(contenedor) {
         const c = await conBoton(botonEmitir, () => api('/api/comprobantes', { method: 'POST', body: cuerpo }));
         if (!c) return;
         mostrarMensaje(`${c.nombre} ${numeroComprobante(c)} emitido.`, 'ok');
-        mostrarEmitido(resultado, c, () => vistaFacturar(contenedor));
+        mostrarEmitido(resultado, c, () => vistaFacturar(contenedor), clienteEmail);
         resultado.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
 
@@ -477,11 +479,37 @@ async function vistaFacturar(contenedor) {
     recalcular();
 }
 
-function mostrarEmitido(zona, c, nuevo) {
+// Envio del comprobante por correo (Fase 7): dialogo con la direccion, prellenada con la del cliente si se conoce.
+function enviarPorCorreo(c, emailSugerido, alEnviar) {
+    const dialogo = el('dialog', { class: 'ventana', 'aria-label': 'Enviar por correo' });
+    const email = el('input', { type: 'email', required: true, maxlength: 200, value: emailSugerido || '', placeholder: 'cliente@ejemplo.com' });
+    const enviar = el('button', { type: 'submit' }, 'Enviar');
+    const cerrar = el('button', { type: 'button', class: 'secundario cerrar-ventana', 'aria-label': 'Cerrar' }, '×');
+    cerrar.addEventListener('click', () => dialogo.close());
+    dialogo.addEventListener('close', () => dialogo.remove());
+    const form = el('form', {}, el('label', {}, 'Dirección de correo', email), el('div', { class: 'acciones' }, enviar));
+    form.addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        const r = await conBoton(enviar, () => api('/api/comprobantes/' + encodeURIComponent(c.id) + '/enviar', { method: 'POST', body: { destinatario: email.value } }));
+        if (!r) return;
+        dialogo.close();
+        mostrarMensaje(`${c.nombre} ${numeroComprobante(c)} enviado a ${r.destinatario}.`, 'ok');
+        if (alEnviar) alEnviar(r);
+    });
+    dialogo.append(el('div', { class: 'tarjeta' }, el('div', { class: 'titulo-tarjeta' }, el('h2', {}, `Enviar ${c.nombre} ${numeroComprobante(c)}`), cerrar), form));
+    document.body.append(dialogo);
+    dialogo.showModal();
+    email.focus();
+}
+
+function mostrarEmitido(zona, c, nuevo, emailSugerido) {
     const imprimir = el('button', { type: 'button' }, 'Imprimir');
     imprimir.addEventListener('click', () => abrirImpresion(c.id));
     const otro = el('button', { type: 'button', class: 'secundario' }, 'Nuevo comprobante');
     otro.addEventListener('click', nuevo);
+    const correo = el('button', { type: 'button', class: 'secundario' }, 'Enviar por correo');
+    const envios = el('span', { class: 'sub' }, (c.envios || []).map(e => (e.estado === 'enviado' ? 'Enviado a ' : 'Error al enviar a ') + e.destinatario).join('; '));
+    correo.addEventListener('click', () => enviarPorCorreo(c, emailSugerido, r => { envios.textContent = 'Enviado a ' + r.destinatario; }));
     vaciar(zona).append(el('div', { class: 'tarjeta emitido' },
         el('h2', {}, `${c.nombre} ${numeroComprobante(c)}`),
         el('dl', { class: 'datos' },
@@ -491,7 +519,7 @@ function mostrarEmitido(zona, c, nuevo) {
             c.pagos && c.pagos.length ? el('dd', {}, c.pagos.map(p => p.medio + ' ' + formatoImporte(p.importe)).join('; ') + ' (' + c.pagos[0].caja + ')') : null,
             c.cae ? el('dt', {}, 'CAE') : null, c.cae ? el('dd', { class: 'mono' }, c.cae) : null,
             c.cae ? el('dt', {}, 'Vencimiento del CAE') : null, c.cae ? el('dd', {}, fecha(c.cae_vencimiento)) : null),
-        el('div', { class: 'acciones' }, imprimir, otro)));
+        el('div', { class: 'acciones' }, imprimir, correo, otro), envios));
 }
 
 // ===== Pantalla Comprobantes =====
@@ -524,6 +552,8 @@ async function vistaComprobantes(contenedor) {
         for (const c of lista) {
             const imprimir = el('button', { type: 'button', class: 'secundario' }, 'Imprimir');
             imprimir.addEventListener('click', () => abrirImpresion(c.id));
+            const correo = el('button', { type: 'button', class: 'secundario' }, 'Enviar');
+            correo.addEventListener('click', () => enviarPorCorreo(c, ''));
             cuerpo.append(el('tr', {},
                 el('td', { class: 'sin-corte' }, fecha(c.fecha)),
                 el('td', {}, c.nombre, el('div', { class: 'sub mono' }, numeroComprobante(c))),
@@ -531,7 +561,7 @@ async function vistaComprobantes(contenedor) {
                     c.receptor.doc_nro !== '0' ? el('div', { class: 'sub mono' }, c.receptor.doc_nro) : null),
                 el('td', { class: 'sin-corte' }, `${c.moneda} ${formatoImporte(c.total)}`),
                 el('td', { class: 'mono' }, c.cae || el('span', { class: 'etiqueta' }, 'No electrónico')),
-                el('td', {}, imprimir)));
+                el('td', { class: 'sin-corte' }, imprimir, ' ', emite() ? correo : null)));
         }
         ultimo = lista.length ? lista[lista.length - 1].creado_en : ultimo;
         mas.classList.toggle('oculto', lista.length < 50);

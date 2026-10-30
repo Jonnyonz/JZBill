@@ -453,3 +453,6 @@ details.tarjeta .tarjeta { margin-top: 1rem; box-shadow: none; }
 .zona-pagos { display: grid; gap: 0.8rem; margin-top: 0.8rem; }
 .zona-pagos > label { max-width: 420px; }
 .resto-cobro { font-size: 0.9rem; color: var(--error-texto); align-self: center; }
+.pestanas { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 0.8rem; }
+.filtros-reporte { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, max-content)); gap: 0.8rem 1rem; align-items: end; }
+tr.total td { font-weight: 700; border-top: 2px solid var(--border); }
