@@ -12,7 +12,7 @@ comprobantes C (A y B necesitan IVA discriminado y un emisor responsable inscrip
 import asyncio
 import json
 import unicodedata
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime
 from decimal import ROUND_HALF_UP, Decimal
 from typing import List, Literal, Optional
 
@@ -20,7 +20,7 @@ import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
-from jzbill import config, ofertas
+from jzbill import caja, config, ofertas
 from jzbill.arca import parametros, servicio, soap, wsfev1
 from jzbill.arca_api import _error as error_arca
 from jzbill.auth import client_ip, registrar
@@ -34,8 +34,7 @@ router_facturacion = APIRouter(prefix="/api/facturacion", tags=["Comprobantes"])
 
 EMITEN = ("administrador", "supervisor", "cajero")
 CENTAVO = Decimal("0.01")
-# ponytail: Argentina no tiene horario de verano desde 2009; UTC-3 fijo (sin depender de tzdata).
-HORA_AR = timezone(timedelta(hours=-3))
+HORA_AR = caja.HORA_AR
 LETRAS_SOPORTADAS = ("C",)
 # RG 1415 Anexo II B, e): condiciones de venta ("contado, cuenta corriente, etc."). Los medios de pago con su
 # detalle son de la Fase 6 (caja).
@@ -72,6 +71,10 @@ class ComprobanteNuevo(BaseModel):
     vencimiento_pago: Optional[date] = None
     asociado_id: Optional[str] = Field(default=None, max_length=40)
     cliente_id: Optional[str] = Field(default=None, max_length=40)
+    # Cobro (Fase 6): el total repartido por medio de pago y la caja donde registrarlo. Sin pagos, el comprobante
+    # se emite sin movimiento de caja (cuenta corriente, o quien no lleva caja).
+    pagos: List[caja.Pago] = Field(default_factory=list, max_length=10)
+    caja_id: Optional[str] = Field(default=None, max_length=40)
 
 
 class Rechazo(Exception):
@@ -85,6 +88,10 @@ def _normal(texto: str) -> str:
 
 def es_nota(nombre: str) -> bool:
     return _normal(nombre).startswith(("nota de credito", "nota de debito"))
+
+
+def es_credito(nombre: str) -> bool:
+    return _normal(nombre).startswith("nota de credito")
 
 
 def _items(vigentes: Optional[dict], tipo: str) -> list:
@@ -223,6 +230,7 @@ async def emitir(data: ComprobanteNuevo, request: Request, ctx: dict = Depends(c
         raise HTTPException(400, "El total tiene que ser mayor a cero.")
     if data.concepto in (2, 3) and not (data.servicio_desde and data.servicio_hasta and data.vencimiento_pago):
         raise HTTPException(400, "Para servicios hacen falta las fechas del período y el vencimiento del pago.")
+    cobro = await caja.preparar_cobro(conn, ctx, data.caja_id, data.pagos, data.moneda, total)
 
     vigentes = await parametros.vigentes(conn, modo)
     doc_nro = "".join(c for c in data.receptor.doc_nro if c.isdigit()) or "0"
@@ -278,6 +286,8 @@ async def emitir(data: ComprobanteNuevo, request: Request, ctx: dict = Depends(c
     try:
         async with conn.transaction():
             await conn.execute("SET LOCAL lock_timeout = '20s'")
+            if cobro:
+                await caja.asegurar_abierta(conn, cobro)
             ultimo = await conn.fetchval("SELECT ultimo_numero FROM contadores WHERE formulario_id = $1 AND modo = $2 "
                                          "FOR UPDATE", f["id"], modo)
             numero = ultimo + 1
@@ -350,6 +360,10 @@ async def emitir(data: ComprobanteNuevo, request: Request, ctx: dict = Depends(c
                   for l in lineas])
             await conn.execute("UPDATE contadores SET ultimo_numero = $3, actualizado_en = now() "
                                "WHERE formulario_id = $1 AND modo = $2", f["id"], modo, numero)
+            if cobro:
+                # Nota de credito: devolucion, sale de la caja. Factura y nota de debito: entra.
+                await caja.registrar_cobro(conn, cobro, comprobante_id, "salida" if es_credito(f["nombre"]) else "entrada",
+                                           f"{f['nombre']} {f['pv_numero']:05d}-{numero:08d}", usuario["id"])
             await registrar(conn, usuario["id"], usuario["usuario"], "COMPROBANTE_EMITIDO",
                             f"{f['nombre']} {f['pv_numero']:05d}-{numero:08d}, {total} {data.moneda}, modo {modo}"
                             + (f", CAE {cae}." if cae else "."), client_ip(request), rs["id"])
@@ -365,7 +379,7 @@ async def emitir(data: ComprobanteNuevo, request: Request, ctx: dict = Depends(c
 
 
 # --- Consulta ---
-def _salida(c, lineas=None) -> dict:
+def _salida(c, lineas=None, pagos=None) -> dict:
     salida = {"id": str(c["id"]), "nombre": c["nombre"], "letra": c["letra"], "electronico": c["electronico"],
               "modo": c["modo"], "codigo_arca": c["codigo_arca"], "punto_venta": c["punto_venta"], "numero": c["numero"],
               "fecha": c["fecha"].isoformat(), "concepto": c["concepto"],
@@ -389,13 +403,15 @@ def _salida(c, lineas=None) -> dict:
         salida["vencimiento_pago"] = c["vencimiento_pago"].isoformat() if c["vencimiento_pago"] else None
         obs = c["observaciones_arca"]
         salida["observaciones_arca"] = json.loads(obs) if isinstance(obs, str) else obs
+    if pagos is not None:
+        salida["pagos"] = pagos
     return salida
 
 
 async def detalle_comprobante(conn: asyncpg.Connection, comprobante_id) -> dict:
     c = await conn.fetchrow("SELECT * FROM comprobantes WHERE id = $1", comprobante_id)
     lineas = await conn.fetch("SELECT * FROM comprobante_lineas WHERE comprobante_id = $1 ORDER BY orden", c["id"])
-    return _salida(c, lineas)
+    return _salida(c, lineas, await caja.pagos_de(conn, c["id"]))
 
 
 async def comprobante_visible(conn: asyncpg.Connection, ctx: dict, comprobante_id: str) -> asyncpg.Record:

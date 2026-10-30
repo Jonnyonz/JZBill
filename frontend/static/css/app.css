@@ -445,3 +445,11 @@ button.boton-icono svg { width: 18px; height: 18px; }
 .cerrar-ventana { padding: 0.2rem 0.7rem; font-size: 1.3rem; line-height: 1; }
 .oferta-linea { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; font-size: 0.82rem; color: var(--text-muted); }
 .oferta-linea button { padding: 0.15rem 0.5rem; font-size: 0.78rem; }
+.importe-entrada { color: var(--ok-texto); }
+.importe-salida { color: var(--error-texto); }
+details.tarjeta > summary { cursor: pointer; font-weight: 700; font-size: 1.1rem; list-style-position: inside; }
+details.tarjeta[open] > summary { margin-bottom: 0.8rem; }
+details.tarjeta .tarjeta { margin-top: 1rem; box-shadow: none; }
+.zona-pagos { display: grid; gap: 0.8rem; margin-top: 0.8rem; }
+.zona-pagos > label { max-width: 420px; }
+.resto-cobro { font-size: 0.9rem; color: var(--error-texto); align-self: center; }

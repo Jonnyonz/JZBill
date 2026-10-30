@@ -75,6 +75,9 @@ async function vistaFacturar(contenedor) {
         contenedor.append(el('div', { class: 'tarjeta' }, el('p', { class: 'ayuda' },
             'Faltan los parámetros fiscales de ARCA de este modo: un administrador tiene que actualizarlos desde Razones sociales, Conexión con ARCA.')));
     }
+    let cajaOp = { medios: [], cajas: [] };
+    try { cajaOp = await api('/api/caja/opciones'); } catch (e) { /* sin caja: se emite sin registrar el cobro */ }
+    if (!vigente()) return;
 
     // --- Cabecera: formulario, concepto, moneda y comprobante asociado ---
     const selFormulario = el('select', { required: true },
@@ -161,6 +164,7 @@ async function vistaFacturar(contenedor) {
     // --- Lineas ---
     const cuerpoLineas = el('tbody');
     const totalTexto = el('strong', { class: 'total-comprobante' }, '0,00');
+    let totalActual = 0n;
 
     function formularioElegido() { return formularios.find(f => f.id === selFormulario.value); }
 
@@ -191,6 +195,8 @@ async function vistaFacturar(contenedor) {
             if (importe !== null) total += importe;
         }
         totalTexto.textContent = selMoneda.value + ' ' + formatoCentavos(total);
+        totalActual = total;
+        actualizarResto();
     }
 
     // Ofertas: el servidor propone la mejor para cada linea con articulo (medio de pago y moneda de la cabecera);
@@ -294,8 +300,92 @@ async function vistaFacturar(contenedor) {
     selFormulario.addEventListener('change', actualizarCabecera);
     selConcepto.addEventListener('change', actualizarCabecera);
     selMoneda.addEventListener('change', () => { recalcular(); evaluarOfertas(); });
-    selVenta.addEventListener('change', evaluarOfertas);
+    selVenta.addEventListener('change', () => {
+        evaluarOfertas();
+        const primera = cuerpoPagos.firstChild;
+        if (primera && !primera._manual) { const m = medioPara(selVenta.value); if (m) primera._medio.value = m.id; }
+        pintarCobro();
+        actualizarResto();
+    });
     selDoc.addEventListener('change', () => { if (selDoc.value === '99') nroDoc.value = '0'; });
+
+    // --- Cobro (Fase 6): caja con planilla abierta y el total repartido por medio de pago. Sin caja abierta o en
+    // cuenta corriente, el comprobante se emite sin movimiento de caja. ---
+    const cajasAbiertas = cajaOp.cajas.filter(c => c.abierta);
+    const selCaja = el('select', { 'aria-label': 'Caja' }, cajasAbiertas.map(c => el('option', { value: c.id }, c.nombre)));
+    const sugerida = cajasAbiertas.length ? cajaSugerida(cajasAbiertas) : null;
+    if (sugerida) selCaja.value = sugerida.id;
+    const registrarCobro = el('input', { type: 'checkbox', checked: true });
+    const cuerpoPagos = el('tbody');
+    const restoTexto = el('span', { class: 'resto-cobro' }, '');
+    const zonaCobro = el('div', {});
+
+    function cobraEnCaja() { return cajasAbiertas.length > 0 && cajaOp.medios.length > 0 && registrarCobro.checked && selVenta.value !== 'Cuenta corriente'; }
+
+    // Medio de pago sugerido por la condicion de venta: Contado -> efectivo; si no, el del mismo nombre.
+    function medioPara(condicion) {
+        const n = normalTexto(condicion);
+        return cajaOp.medios.find(m => n === 'contado' ? m.efectivo : normalTexto(m.nombre) === n) || cajaOp.medios[0] || null;
+    }
+
+    function agregarPago(medio) {
+        const selMedio = el('select', { 'aria-label': 'Medio de pago' }, cajaOp.medios.map(m => el('option', { value: m.id, selected: medio && m.id === medio.id }, m.nombre)));
+        const importe = el('input', { inputmode: 'decimal', placeholder: '0,00', 'aria-label': 'Importe' });
+        const quitar = el('button', { type: 'button', class: 'peligro', title: 'Quitar medio de pago' }, 'Quitar');
+        const fila = el('tr', {}, el('td', {}, selMedio), el('td', { class: 'col-numero' }, importe), el('td', {}, quitar));
+        fila._medio = selMedio; fila._importe = importe; fila._manual = false;
+        importe.addEventListener('input', () => { fila._manual = true; actualizarResto(); });
+        quitar.addEventListener('click', () => { if (cuerpoPagos.children.length > 1) { fila.remove(); actualizarResto(); } });
+        cuerpoPagos.append(fila);
+        return fila;
+    }
+
+    // La primera fila que el cajero no toco toma el resto (el total menos lo tipeado en las demas).
+    function actualizarResto() {
+        if (!cobraEnCaja()) { restoTexto.textContent = ''; return; }
+        let asignado = 0n;
+        let libre = null;
+        for (const f of cuerpoPagos.children) {
+            if (!f._manual && libre === null) { libre = f; continue; }
+            const v = normalizarNumero(f._importe.value, 2);
+            if (v !== null) asignado += aEntero(v, 2);
+        }
+        if (libre) {
+            const resto = totalActual - asignado;
+            libre._importe.value = resto > 0n ? formatoCentavos(resto) : '0';
+            if (resto > 0n) asignado += resto;
+        }
+        const diferencia = totalActual - asignado;
+        restoTexto.textContent = diferencia === 0n ? '' : (diferencia > 0n ? 'Faltan ' : 'Sobran ') + formatoCentavos(diferencia < 0n ? -diferencia : diferencia);
+    }
+
+    const botonPago = el('button', { type: 'button', class: 'secundario' }, 'Agregar medio de pago');
+    botonPago.addEventListener('click', () => {
+        const fila = agregarPago(medioPara(selVenta.value));
+        fila._manual = true;
+        actualizarResto();
+        fila._importe.focus();
+    });
+
+    function pintarCobro() {
+        vaciar(zonaCobro);
+        if (!cajasAbiertas.length || !cajaOp.medios.length) {
+            zonaCobro.append(el('p', { class: 'ayuda' }, 'No hay una caja abierta en este modo: el comprobante se emite sin registrar el cobro. Abrila desde Caja.'));
+            return;
+        }
+        if (selVenta.value === 'Cuenta corriente') {
+            zonaCobro.append(el('p', { class: 'ayuda' }, 'Cuenta corriente: no se registra cobro en la caja.'));
+            return;
+        }
+        zonaCobro.append(el('label', { class: 'casilla' }, registrarCobro, 'Registrar el cobro en la caja'),
+            el('div', { class: 'zona-pagos' + (registrarCobro.checked ? '' : ' oculto') },
+                el('label', {}, 'Caja', selCaja),
+                el('div', { class: 'tabla-scroll' }, el('table', { class: 'tabla-lineas' },
+                    el('thead', {}, el('tr', {}, el('th', {}, 'Medio de pago'), el('th', {}, 'Importe'), el('th', {}, ''))), cuerpoPagos)),
+                el('div', { class: 'acciones' }, botonPago, restoTexto)));
+    }
+    registrarCobro.addEventListener('change', () => { pintarCobro(); actualizarResto(); });
+    if (cajaOp.medios.length) agregarPago(medioPara(selVenta.value));
 
     const botonAgregar = el('button', { type: 'button', class: 'secundario' }, 'Agregar línea');
     botonAgregar.addEventListener('click', () => agregarLinea(null));
@@ -323,6 +413,7 @@ async function vistaFacturar(contenedor) {
                     el('th', {}, 'Precio unitario'), el('th', {}, 'Importe'), el('th', {}, ''))),
                 cuerpoLineas)),
             el('div', { class: 'acciones' }, botonAgregar)),
+        el('div', { class: 'tarjeta' }, el('h2', {}, 'Cobro'), zonaCobro),
         el('div', { class: 'tarjeta pie-factura' },
             el('div', {}, el('span', { class: 'sub' }, 'Total'), totalTexto),
             el('div', { class: 'acciones' }, botonEmitir)),
@@ -349,6 +440,23 @@ async function vistaFacturar(contenedor) {
                         domicilio: domicilio.value,
                         condicion_iva: Number(selCondicion.value || 0) }
         };
+        if (cobraEnCaja()) {
+            const pagos = [];
+            let suma = 0n;
+            for (const fila of cuerpoPagos.children) {
+                const v = normalizarNumero(fila._importe.value, 2);
+                if (v === null) { mostrarMensaje('Revisá los importes del cobro.', 'error'); return; }
+                if (aEntero(v, 2) === 0n) continue;
+                pagos.push({ medio_pago_id: fila._medio.value, importe: v });
+                suma += aEntero(v, 2);
+            }
+            if (suma !== totalActual) {
+                mostrarMensaje('Los pagos suman ' + formatoCentavos(suma) + ' y el total es ' + formatoCentavos(totalActual) + '.', 'error');
+                return;
+            }
+            cuerpo.pagos = pagos;
+            cuerpo.caja_id = selCaja.value;
+        }
         if (f.es_nota) cuerpo.asociado_id = selAsociado.value || null;
         if (clienteId) cuerpo.cliente_id = clienteId;
         if (['2', '3'].includes(selConcepto.value)) {
@@ -364,6 +472,7 @@ async function vistaFacturar(contenedor) {
 
     contenedor.append(form);
     actualizarCabecera();
+    pintarCobro();
     agregarLinea(null);
     recalcular();
 }
@@ -378,6 +487,8 @@ function mostrarEmitido(zona, c, nuevo) {
         el('dl', { class: 'datos' },
             el('dt', {}, 'Fecha'), el('dd', {}, fecha(c.fecha)),
             el('dt', {}, 'Total'), el('dd', {}, `${c.moneda} ${formatoImporte(c.total)}`),
+            c.pagos && c.pagos.length ? el('dt', {}, 'Cobro') : null,
+            c.pagos && c.pagos.length ? el('dd', {}, c.pagos.map(p => p.medio + ' ' + formatoImporte(p.importe)).join('; ') + ' (' + c.pagos[0].caja + ')') : null,
             c.cae ? el('dt', {}, 'CAE') : null, c.cae ? el('dd', { class: 'mono' }, c.cae) : null,
             c.cae ? el('dt', {}, 'Vencimiento del CAE') : null, c.cae ? el('dd', {}, fecha(c.cae_vencimiento)) : null),
         el('div', { class: 'acciones' }, imprimir, otro)));

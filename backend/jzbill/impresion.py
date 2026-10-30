@@ -14,7 +14,7 @@ import segno
 from fastapi import APIRouter, Depends
 from fastapi.responses import HTMLResponse
 
-from jzbill import __version__
+from jzbill import __version__, caja
 from jzbill.comprobantes import comprobante_visible
 from jzbill.contexto import contexto_requerido
 from jzbill.cuit import formatear_cuit
@@ -113,6 +113,10 @@ async def imprimir(comprobante_id: str, ctx: dict = Depends(contexto_requerido),
         receptor.append(f"<p>Período facturado: {_fecha(c['servicio_desde'])} al {_fecha(c['servicio_hasta'])}. "
                         f"Vencimiento del pago: {_fecha(c['vencimiento_pago'])}.</p>")
 
+    pagos = await caja.pagos_de(conn, c["id"])
+    forma_pago = ""
+    if pagos:
+        forma_pago = "<p>Forma de pago: " + "; ".join(f"{e(p['medio'])} {e(_importe(Decimal(p['importe'])))}" for p in pagos) + ".</p>"
     moneda = ""
     if c["moneda"] != "PES":
         moneda = f"<p>Moneda: {e(c['moneda'])}. Tipo de cambio utilizado: {e(_cantidad(c['cotizacion']))}.</p>"
@@ -164,6 +168,7 @@ async def imprimir(comprobante_id: str, ctx: dict = Depends(contexto_requerido),
 <section class="receptor">
 {"".join(receptor)}
 <p>Concepto: {e(concepto)}. Condiciones de venta: {e(c['condicion_venta'])}.</p>
+{forma_pago}
 </section>
 <section class="detalle">
 <table class="lineas">

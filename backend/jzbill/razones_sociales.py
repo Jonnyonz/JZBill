@@ -9,6 +9,7 @@ import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from jzbill import caja
 from jzbill.auth import client_ip, registrar, require_usuario
 from jzbill.cuit import formatear_cuit, normalizar_cuit
 from jzbill.db import get_conn
@@ -118,6 +119,7 @@ async def crear(data: RazonSocialNueva, request: Request, admin: dict = Depends(
                 data.regimen_arba_bsas, color, data.ingresos_brutos.strip(), data.inicio_actividades)
         except asyncpg.UniqueViolationError:
             raise HTTPException(409, "Ya existe una razón social con ese CUIT.")
+        await caja.predeterminados(conn, fila["id"])
         await registrar(conn, admin["id"], admin["usuario"], "RAZON_SOCIAL_ALTA",
                         f"Alta de {formatear_cuit(cuit)}.", client_ip(request), fila["id"])
     return _rs_salida(fila, await modos_permitidos(conn, admin, fila["id"]))
