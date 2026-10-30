@@ -2,6 +2,28 @@
 
 Cambios de JZBill, del más nuevo al más viejo.
 
+## 0.10.0 - 2026-10-30
+
+Fase 9: actualizador, instalador y cierre del plan.
+
+### Agregado
+- `jz-bill-actualizar` para la instalación nativa (lo deja `install-native.sh` en `/usr/local/sbin`): descarga la
+  versión publicada en GitHub Releases y verifica su hash, la arma en su propia carpeta con su venv (si falla no se
+  cambió nada), pide confirmación, respalda la base en `/var/backups/jzbill/`, cambia de versión, corre las
+  migraciones al arrancar y verifica `/api/health`; si la versión nueva no responde vuelve sola a la anterior y, si
+  el esquema cambió, restaura el respaldo. `--buscar`, `--version`, `--archivo` (sin internet), `--desde` (repo
+  clonado) y `--volver`. Nunca corre solo.
+- `tools/empaquetar.sh`: arma el paquete y su `.sha256` para publicar una versión.
+- README: secciones Actualizar y Operación (respaldos, certificado de ARCA vencido o revocado, certificado HTTPS,
+  modos prueba y empresa).
+
+### Cambiado
+- `install-docker.sh` respalda la base en `/etc/jzbill-docker/backups/` antes de cambiar de versión (guarda los
+  últimos 10) y explica cómo volver atrás.
+- Revisión de seguridad de cierre: todas las rutas exigen sesión salvo las públicas declaradas, autorización por rol
+  y razón social en cada endpoint, sin HTML construido con datos, sin SQL concatenado, secretos cifrados y
+  enmascarados; `pip-audit` sin vulnerabilidades conocidas.
+
 ## 0.9.0 - 2026-10-30
 
 Fase 8: integración con Tracker360 (stock y ventas por la API de canales).
