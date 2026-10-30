@@ -157,6 +157,36 @@ function mostrarVista(nombre) {
     else if (nombre === 'configuracion') vistaConfiguracion(contenedor);
 }
 
+// Panel central (como el de JZPass): una tarjeta por modulo visible para este usuario, con el mismo icono del menu.
+const DESCRIPCIONES = {
+    facturar: 'Emitir facturas, notas de crédito y débito.',
+    comprobantes: 'Buscar, imprimir, bajar en PDF y enviar por correo.',
+    clientes: 'Clientes, grupos y consulta del padrón.',
+    articulos: 'Catálogo, precios y stock de Tracker360.',
+    ofertas: 'Descuentos por artículo, categoría o medio de pago.',
+    caja: 'Planillas, movimientos y arqueo.',
+    reportes: 'Ventas, libro de IVA, rentabilidad y caja.',
+    razones: 'Razones sociales, puntos de venta y certificados de ARCA.',
+    sucursales: 'Sucursales y puntos de venta asignados.',
+    usuarios: 'Usuarios, roles y accesos.',
+    configuracion: 'Tracker360, correo y cola de ventas.',
+    auditoria: 'Quién hizo qué y cuándo.',
+};
+
+function panelCentral() {
+    const grilla = el('div', { class: 'grilla-modulos' });
+    document.querySelectorAll('.nav-btn[data-vista]').forEach(b => {
+        const vista = b.dataset.vista;
+        if (vista === 'inicio' || b.classList.contains('oculto')) return;
+        const tarjeta = el('button', { type: 'button', class: 'modulo' },
+            el('h3', {}, b.querySelector('svg').cloneNode(true), TITULOS[vista]),
+            el('p', {}, DESCRIPCIONES[vista] || ''));
+        tarjeta.addEventListener('click', () => { location.hash = '#' + vista; });
+        grilla.append(tarjeta);
+    });
+    return grilla;
+}
+
 function vistaInicio(contenedor) {
     vaciar(contenedor);
     const c = Panel.contexto;
@@ -170,14 +200,21 @@ function vistaInicio(contenedor) {
                 el('dt', {}, 'Sucursal'), el('dd', {}, c.sucursal_nombre || 'Sin sucursal asignada'),
                 el('dt', {}, 'Punto de venta'), el('dd', { class: 'mono' }, c.punto_venta_numero ? numeroPv(c.punto_venta_numero) : 'Sin asignar'),
                 el('dt', {}, 'Rol'), el('dd', {}, ROLES[Panel.yo.rol])),
-            el('p', { class: 'ayuda' }, 'Para facturar, entrá a Facturar en el menú. Para cambiar de razón social, modo o sucursal, usá el menú del avatar.'));
+            el('p', { class: 'ayuda' }, 'Para cambiar de razón social, modo o sucursal, usá el menú del avatar.'));
     } else {
         tarjeta.append(el('h2', {}, 'Sin razones sociales'),
             el('p', { class: 'ayuda' }, esAdmin()
                 ? 'Creá la primera razón social en Razones sociales.'
                 : 'Todavía no tiene razones sociales asignadas. Pedíselas a un administrador.'));
     }
-    contenedor.append(tarjeta);
+    contenedor.append(tarjeta, el('p', { class: 'ayuda' }, 'Seleccioná el módulo al que querés ingresar.'), panelCentral());
+}
+
+async function mostrarVersion() {
+    try {
+        const salud = await api('/api/health');
+        document.getElementById('version-app').textContent = 'JZBill v' + salud.version;
+    } catch (e) { /* el pie queda sin version */ }
 }
 
 function prepararCuenta() {
@@ -223,6 +260,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { cerrarMenu(); alternarLateral(false); } });
 
     prepararCuenta();
+    mostrarVersion();
     try {
         await cargarContexto();
     } catch (e) {

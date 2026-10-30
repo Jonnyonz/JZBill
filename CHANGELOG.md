@@ -2,6 +2,16 @@
 
 Cambios de JZBill, del más nuevo al más viejo.
 
+## 0.12.0 - 2026-10-30
+
+### Cambiado
+- Interfaz calcada de JZPass (pedido de Jonny): la página de acceso con el logo JZ y el nombre arriba de la
+  tarjeta, campos con texto de ayuda y botón ancho; el panel con el logo JZ en la barra lateral y en la barra del
+  celular; mismas medidas de botones, campos, etiquetas, tablas (marco redondeado, encabezado sin mayúsculas),
+  tarjetas, pestañas y filtros; pie "Powered by JZ Tech Solutions" con la marca de agua y la versión instalada.
+- Inicio es ahora un panel central: una tarjeta por módulo disponible para el usuario (con el icono del menú y una
+  línea de descripción) que lleva a cada pantalla, debajo de los datos de la razón social del contexto.
+
 ## 0.11.0 - 2026-10-30
 
 ### Agregado

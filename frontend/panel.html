@@ -3,9 +3,10 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>JZBill</title>
-    <link rel="stylesheet" href="/static/css/app.css?v=0.11.0">
-    <script src="/static/js/tema.js?v=0.11.0"></script>
+    <title>JZBill - Panel</title>
+    <link rel="icon" type="image/svg+xml" href="/static/img/logo-jz.svg">
+    <link rel="stylesheet" href="/static/css/app.css?v=0.12.0">
+    <script src="/static/js/tema.js?v=0.12.0"></script>
 </head>
 <body class="panel">
     <div class="acento-superior"></div>
@@ -14,14 +15,14 @@
         <button id="abrir-lateral" type="button" aria-label="Menú" aria-controls="lateral" aria-expanded="false">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h18M3 6h18M3 18h18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
         </button>
-        <svg class="icono-marca" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l3 3v15l-2-1.2-2 1.2-2-1.2-2 1.2-2-1.2-2 1.2V3zM9 9h6M9 13h6M9 17h3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <img class="logo-jz" src="/static/img/logo-jz.svg" alt="" width="24" height="24">
         <strong>JZBill</strong>
     </div>
     <div id="fondo-lateral" class="fondo-lateral"></div>
 
     <nav id="lateral" class="lateral" aria-label="Secciones">
         <div class="marca">
-            <svg class="icono-marca" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l3 3v15l-2-1.2-2 1.2-2-1.2-2 1.2-2-1.2-2 1.2V3zM9 9h6M9 13h6M9 17h3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <img class="logo-jz" src="/static/img/logo-jz.svg" alt="" width="32" height="32">
             <h1>JZBill</h1>
         </div>
         <button class="nav-btn" type="button" data-vista="inicio" title="Inicio">
@@ -127,22 +128,25 @@
                 </div>
             </section>
         </main>
-        <footer class="pie-suite">Powered By: <a href="https://jztech.com.ar" target="_blank" rel="noopener noreferrer">JZTech Solutions <img src="/static/img/logo-jz.svg" alt="" width="16" height="22"></a></footer>
+        <footer class="pie-suite">
+            <img class="logo-jz marca-agua" src="/static/img/logo-jz.svg" alt="" width="24" height="24">
+            <span>Powered by <a href="https://jztech.com.ar" target="_blank" rel="noopener noreferrer">JZ Tech Solutions</a> &middot; <span id="version-app" class="mono"></span></span>
+        </footer>
     </div>
 
     <p id="mensaje" class="mensaje mensaje-flotante" role="alert"></p>
-    <script src="/static/js/api.js?v=0.11.0"></script>
-    <script src="/static/js/clientes.js?v=0.11.0"></script>
-    <script src="/static/js/articulos.js?v=0.11.0"></script>
-    <script src="/static/js/ofertas.js?v=0.11.0"></script>
-    <script src="/static/js/facturacion.js?v=0.11.0"></script>
-    <script src="/static/js/caja.js?v=0.11.0"></script>
-    <script src="/static/js/reportes.js?v=0.11.0"></script>
-    <script src="/static/js/admin-razones.js?v=0.11.0"></script>
-    <script src="/static/js/admin-sucursales.js?v=0.11.0"></script>
-    <script src="/static/js/admin-usuarios.js?v=0.11.0"></script>
-    <script src="/static/js/admin-auditoria.js?v=0.11.0"></script>
-    <script src="/static/js/configuracion.js?v=0.11.0"></script>
-    <script src="/static/js/panel.js?v=0.11.0"></script>
+    <script src="/static/js/api.js?v=0.12.0"></script>
+    <script src="/static/js/clientes.js?v=0.12.0"></script>
+    <script src="/static/js/articulos.js?v=0.12.0"></script>
+    <script src="/static/js/ofertas.js?v=0.12.0"></script>
+    <script src="/static/js/facturacion.js?v=0.12.0"></script>
+    <script src="/static/js/caja.js?v=0.12.0"></script>
+    <script src="/static/js/reportes.js?v=0.12.0"></script>
+    <script src="/static/js/admin-razones.js?v=0.12.0"></script>
+    <script src="/static/js/admin-sucursales.js?v=0.12.0"></script>
+    <script src="/static/js/admin-usuarios.js?v=0.12.0"></script>
+    <script src="/static/js/admin-auditoria.js?v=0.12.0"></script>
+    <script src="/static/js/configuracion.js?v=0.12.0"></script>
+    <script src="/static/js/panel.js?v=0.12.0"></script>
 </body>
 </html>

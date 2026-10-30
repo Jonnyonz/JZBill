@@ -3,43 +3,54 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>JZBill</title>
-    <link rel="stylesheet" href="/static/css/app.css?v=0.11.0">
-    <script src="/static/js/tema.js?v=0.11.0"></script>
+    <title>JZBill - Acceso</title>
+    <link rel="icon" type="image/svg+xml" href="/static/img/logo-jz.svg">
+    <link rel="stylesheet" href="/static/css/app.css?v=0.12.0">
+    <script src="/static/js/tema.js?v=0.12.0"></script>
 </head>
 <body class="centrado">
     <div class="acento-superior"></div>
     <button class="tema-flotante" type="button" data-alternar-tema aria-label="Tema claro u oscuro" title="Tema claro u oscuro">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
-    <main class="tarjeta tarjeta-chica">
-        <header class="marca">
-            <svg class="icono-marca" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l3 3v15l-2-1.2-2 1.2-2-1.2-2 1.2-2-1.2-2 1.2V3zM9 9h6M9 13h6M9 17h3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <div>
-                <h1>JZBill</h1>
-                <p class="sub">Facturación electrónica ARCA</p>
-            </div>
-        </header>
 
+    <header class="cabecera-ingreso">
+        <h1><img class="logo-jz" src="/static/img/logo-jz.svg" alt="" width="28" height="28"> JZBill</h1>
+        <span>Facturación electrónica ARCA</span>
+    </header>
+
+    <main class="tarjeta tarjeta-chica">
         <form id="form-login" class="oculto" autocomplete="on">
-            <label>Usuario <input id="login-usuario" name="username" required maxlength="50" autocomplete="username"></label>
-            <label>Contraseña <input id="login-clave" name="password" type="password" required maxlength="128" autocomplete="current-password"></label>
-            <button type="submit">Ingresar</button>
+            <h2>Inicio de sesión</h2>
+            <input id="login-usuario" name="username" placeholder="Usuario" aria-label="Usuario" required maxlength="50" autocomplete="username">
+            <input id="login-clave" name="password" type="password" placeholder="Contraseña" aria-label="Contraseña" required maxlength="128" autocomplete="current-password">
+            <button type="submit">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Ingresar
+            </button>
         </form>
 
         <form id="form-setup" class="oculto" autocomplete="off">
-            <p class="ayuda">Configuración inicial: creá el usuario administrador. El token de instalación lo generó el instalador (está en el archivo de configuración del servidor).</p>
-            <label>Token de instalación <input id="setup-token" required maxlength="200"></label>
-            <label>Usuario <input id="setup-usuario" required maxlength="50" autocomplete="username"></label>
-            <label>Nombre <input id="setup-nombre" maxlength="120" autocomplete="name"></label>
-            <label>Contraseña (mínimo 10 caracteres) <input id="setup-clave" type="password" required minlength="10" maxlength="128" autocomplete="new-password"></label>
-            <button type="submit">Crear administrador</button>
+            <h2>Configuración inicial</h2>
+            <p class="ayuda ayuda-centrada">Es la primera vez que se usa el sistema. Creá el usuario administrador con el token de instalación que generó el instalador (está en el archivo de configuración del servidor).</p>
+            <input id="setup-token" placeholder="Token de instalación" aria-label="Token de instalación" required maxlength="200">
+            <input id="setup-usuario" placeholder="Usuario" aria-label="Usuario" required maxlength="50" autocomplete="username">
+            <input id="setup-nombre" placeholder="Nombre completo" aria-label="Nombre completo" maxlength="120" autocomplete="name">
+            <input id="setup-clave" type="password" placeholder="Contraseña (mínimo 10 caracteres)" aria-label="Contraseña (mínimo 10 caracteres)" required minlength="10" maxlength="128" autocomplete="new-password">
+            <button type="submit" class="exito">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6L9 17l-5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Crear administrador
+            </button>
         </form>
 
         <p id="mensaje" class="mensaje" role="alert"></p>
     </main>
-    <footer class="pie-suite">Powered By: <a href="https://jztech.com.ar" target="_blank" rel="noopener noreferrer">JZTech Solutions <img src="/static/img/logo-jz.svg" alt="" width="16" height="22"></a></footer>
-    <script src="/static/js/api.js?v=0.11.0"></script>
-    <script src="/static/js/index.js?v=0.11.0"></script>
+
+    <footer class="pie-suite">
+        <img class="logo-jz marca-agua" src="/static/img/logo-jz.svg" alt="" width="24" height="24">
+        <span>Powered by <a href="https://jztech.com.ar" target="_blank" rel="noopener noreferrer">JZ Tech Solutions</a></span>
+    </footer>
+    <script src="/static/js/api.js?v=0.12.0"></script>
+    <script src="/static/js/index.js?v=0.12.0"></script>
 </body>
 </html>
