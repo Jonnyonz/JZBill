@@ -1,3 +1,3 @@
 """JZBill: facturador electronico para Argentina (ARCA), modulo de JZTech Suite."""
 
-__version__ = "0.7.0"
+__version__ = "0.8.0"

@@ -4,8 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>JZBill</title>
-    <link rel="stylesheet" href="/static/css/app.css?v=0.7.0">
-    <script src="/static/js/tema.js?v=0.7.0"></script>
+    <link rel="stylesheet" href="/static/css/app.css?v=0.8.0">
+    <script src="/static/js/tema.js?v=0.8.0"></script>
 </head>
 <body class="panel">
     <div class="acento-superior"></div>
@@ -51,6 +51,10 @@
         <button class="nav-btn" type="button" data-vista="caja" title="Caja">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h18v12H3zM3 11h18M7 15h3M16 4l-4 3-4-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <span class="etiqueta-nav">Caja</span>
+        </button>
+        <button class="nav-btn" type="button" data-vista="reportes" title="Reportes">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18M7 15l4-5 3 3 5-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="etiqueta-nav">Reportes</span>
         </button>
         <button class="nav-btn oculto" type="button" data-vista="razones" data-admin title="Razones sociales">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21V5l8-3v19M12 9h8v12M7 8h2M7 12h2M7 16h2M15 13h2M15 17h2M2 21h20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -104,6 +108,7 @@
             <section id="vista-articulos" class="vista oculto"></section>
             <section id="vista-ofertas" class="vista oculto"></section>
             <section id="vista-caja" class="vista oculto"></section>
+            <section id="vista-reportes" class="vista oculto"></section>
             <section id="vista-razones" class="vista oculto"></section>
             <section id="vista-sucursales" class="vista oculto"></section>
             <section id="vista-usuarios" class="vista oculto"></section>
@@ -126,17 +131,18 @@
     </div>
 
     <p id="mensaje" class="mensaje mensaje-flotante" role="alert"></p>
-    <script src="/static/js/api.js?v=0.7.0"></script>
-    <script src="/static/js/clientes.js?v=0.7.0"></script>
-    <script src="/static/js/articulos.js?v=0.7.0"></script>
-    <script src="/static/js/ofertas.js?v=0.7.0"></script>
-    <script src="/static/js/facturacion.js?v=0.7.0"></script>
-    <script src="/static/js/caja.js?v=0.7.0"></script>
-    <script src="/static/js/admin-razones.js?v=0.7.0"></script>
-    <script src="/static/js/admin-sucursales.js?v=0.7.0"></script>
-    <script src="/static/js/admin-usuarios.js?v=0.7.0"></script>
-    <script src="/static/js/admin-auditoria.js?v=0.7.0"></script>
-    <script src="/static/js/configuracion.js?v=0.7.0"></script>
-    <script src="/static/js/panel.js?v=0.7.0"></script>
+    <script src="/static/js/api.js?v=0.8.0"></script>
+    <script src="/static/js/clientes.js?v=0.8.0"></script>
+    <script src="/static/js/articulos.js?v=0.8.0"></script>
+    <script src="/static/js/ofertas.js?v=0.8.0"></script>
+    <script src="/static/js/facturacion.js?v=0.8.0"></script>
+    <script src="/static/js/caja.js?v=0.8.0"></script>
+    <script src="/static/js/reportes.js?v=0.8.0"></script>
+    <script src="/static/js/admin-razones.js?v=0.8.0"></script>
+    <script src="/static/js/admin-sucursales.js?v=0.8.0"></script>
+    <script src="/static/js/admin-usuarios.js?v=0.8.0"></script>
+    <script src="/static/js/admin-auditoria.js?v=0.8.0"></script>
+    <script src="/static/js/configuracion.js?v=0.8.0"></script>
+    <script src="/static/js/panel.js?v=0.8.0"></script>
 </body>
 </html>

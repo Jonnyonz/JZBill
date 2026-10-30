@@ -110,6 +110,10 @@
     "cuerpo": false,
     "params": []
   },
+  "GET /api/correo": {
+    "cuerpo": false,
+    "params": []
+  },
   "GET /api/facturacion/opciones": {
     "cuerpo": false,
     "params": []
@@ -207,6 +211,74 @@
     "cuerpo": false,
     "params": [
       "path:razon_social_id"
+    ]
+  },
+  "GET /api/reportes/caja": {
+    "cuerpo": false,
+    "params": [
+      "query:desde",
+      "query:hasta"
+    ]
+  },
+  "GET /api/reportes/caja.csv": {
+    "cuerpo": false,
+    "params": [
+      "query:desde",
+      "query:hasta"
+    ]
+  },
+  "GET /api/reportes/libro-iva": {
+    "cuerpo": false,
+    "params": [
+      "query:desde",
+      "query:hasta",
+      "query:punto_venta_id"
+    ]
+  },
+  "GET /api/reportes/libro-iva.csv": {
+    "cuerpo": false,
+    "params": [
+      "query:desde",
+      "query:hasta",
+      "query:punto_venta_id"
+    ]
+  },
+  "GET /api/reportes/opciones": {
+    "cuerpo": false,
+    "params": []
+  },
+  "GET /api/reportes/rentabilidad": {
+    "cuerpo": false,
+    "params": [
+      "query:agrupar",
+      "query:desde",
+      "query:hasta",
+      "query:punto_venta_id"
+    ]
+  },
+  "GET /api/reportes/rentabilidad.csv": {
+    "cuerpo": false,
+    "params": [
+      "query:agrupar",
+      "query:desde",
+      "query:hasta",
+      "query:punto_venta_id"
+    ]
+  },
+  "GET /api/reportes/ventas": {
+    "cuerpo": false,
+    "params": [
+      "query:desde",
+      "query:hasta",
+      "query:punto_venta_id"
+    ]
+  },
+  "GET /api/reportes/ventas.csv": {
+    "cuerpo": false,
+    "params": [
+      "query:desde",
+      "query:hasta",
+      "query:punto_venta_id"
     ]
   },
   "GET /api/sucursales": {
@@ -344,6 +416,16 @@
     "cuerpo": true,
     "params": []
   },
+  "POST /api/comprobantes/{comprobante_id}/enviar": {
+    "cuerpo": true,
+    "params": [
+      "path:comprobante_id"
+    ]
+  },
+  "POST /api/correo/prueba": {
+    "cuerpo": true,
+    "params": []
+  },
   "POST /api/grupos-clientes": {
     "cuerpo": true,
     "params": []
@@ -466,6 +548,10 @@
     ]
   },
   "PUT /api/contexto": {
+    "cuerpo": true,
+    "params": []
+  },
+  "PUT /api/correo": {
     "cuerpo": true,
     "params": []
   },

@@ -2,6 +2,36 @@
 
 Cambios de JZBill, del más nuevo al más viejo.
 
+## 0.8.0 - 2026-10-30
+
+Fase 7: reportes, rentabilidad y correo.
+
+### Agregado
+- Reportes: pantalla Reportes en la barra lateral (la ven todos los roles), por razón social y modo del contexto,
+  por período (mes en curso por defecto, hasta un año) y punto de venta, con descarga CSV (separador ";", coma
+  decimal, BOM, y protección contra inyección de fórmulas). Ventas: totales por moneda (facturado, notas de
+  crédito, neto) y por tipo de comprobante, condición de venta, punto de venta y día. Libro de IVA ventas:
+  comprobantes electrónicos con neto, no gravado, exento, IVA, tributos y total, notas de crédito en negativo.
+  Rentabilidad: margen bruto por artículo, categoría, punto de venta o día, con el costo actual del artículo (las
+  líneas sin artículo o en otra moneda quedan sin costo). Cierres de caja: planillas del período con totales por
+  medio de pago, arqueo y diferencias, más el acumulado por medio de pago y por categoría. Los reportes de modo
+  empresa nunca incluyen lo de prueba.
+- Correo: servidor SMTP por razón social en Configuración (solo administrador): STARTTLS o SSL, usuario, clave
+  cifrada con la clave maestra y nunca mostrada, remitente, prueba de envío y envío automático. Envío de
+  comprobantes por correo a pedido desde Facturar y Comprobantes (administrador, supervisor y cajero) y automático
+  al emitir cuando el comprobante lleva un cliente con correo. El mensaje lleva los datos de la representación
+  impresa en HTML con el QR de ARCA incrustado y una versión en texto; cada envío queda registrado en el
+  comprobante y en la auditoría, y un fallo nunca frena la emisión.
+
+### Cambiado
+- Contrato de la API: 110 operaciones (13 nuevas: `/api/reportes/*`, `/api/correo`, `/api/correo/prueba`,
+  `POST /api/comprobantes/{id}/enviar`); el detalle del comprobante devuelve `envios`.
+- Migración 0013 (correo_config, comprobante_envios, índice de comprobantes por fecha).
+
+### Pendiente
+- PDF adjunto en el correo: a la espera de aprobar una biblioteca de PDF. Percepciones por jurisdicción: con los
+  tributos y el padrón ARBA, al final.
+
 ## 0.7.0 - 2026-10-30
 
 Fase 6: caja.
