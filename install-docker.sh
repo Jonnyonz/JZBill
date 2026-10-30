@@ -23,8 +23,8 @@
 # uno propio: copiar cert.pem (con la cadena) y key.pem a /etc/jzbill-docker/tls/, borrar
 # /etc/jzbill-docker/tls/.autofirmado y volver a correr.
 #
-# Idempotente: se puede volver a correr (asi tambien se actualiza: git pull y volver a correrlo). Los secretos ya
-# generados no se pisan. Si la base ya existe y falta la clave maestra o la configuracion, se corta: una clave
+# Idempotente: se puede volver a correr (asi tambien se actualiza: git pull y volver a correrlo; antes de cambiar
+# de version respalda la base en JZB_CONF/backups/, y guarda los ultimos 10). Los secretos ya generados no se pisan. Si la base ya existe y falta la clave maestra o la configuracion, se corta: una clave
 # nueva dejaria inutilizables los certificados guardados.
 #
 # Ojo: Docker publica el puerto por encima del firewall del sistema (ufw no lo filtra). Si el equipo esta
@@ -209,7 +209,24 @@ fi
 chmod 600 "$TMP_ENV"
 mv -f "$TMP_ENV" "$ENV_FILE"
 
-# 6. Imagen y contenedores (--force-recreate: toma el certificado y la configuracion nuevos)
+# 6. Respaldo de la base antes de cambiar de version (la app en marcha con otra version y la base ya existente).
+#    Para volver atras: git checkout v<version anterior> && sudo ./install-docker.sh, y si el esquema cambio,
+#    restaurar el respaldo con pg_restore dentro del contenedor db.
+VERSION_PREVIA="$(valor_env JZB_VERSION)"
+if [ "$DB_EXISTE" = "1" ] && [ -n "$APP_ACTIVA" ] && [ -n "$VERSION_PREVIA" ] && [ "$VERSION_PREVIA" != "$VERSION" ]; then
+  install -d -m 0700 "$CONF/backups"
+  RESPALDO="$CONF/backups/jzbill-$VERSION_PREVIA-$(date +%Y%m%d-%H%M%S).dump"
+  echo "Respaldando la base ($VERSION_PREVIA -> $VERSION) en $RESPALDO..."
+  if ! "${COMPOSE[@]}" exec -T db pg_dump -U jzbill -Fc jzbill_db > "$RESPALDO"; then
+    rm -f "$RESPALDO"
+    echo "Error: no se pudo respaldar la base. No se cambio nada." >&2
+    exit 1
+  fi
+  chmod 600 "$RESPALDO"
+  ls -1t "$CONF"/backups/jzbill-*.dump 2>/dev/null | tail -n +11 | xargs -r rm -f || true
+fi
+
+# 7. Imagen y contenedores (--force-recreate: toma el certificado y la configuracion nuevos)
 echo "Construyendo la imagen jzbill:$VERSION..."
 "${COMPOSE[@]}" build --pull app
 echo "Levantando los contenedores..."
@@ -232,7 +249,7 @@ if [ "$OK" != "1" ]; then
   exit 1
 fi
 
-# 7. Resumen
+# 8. Resumen
 USUARIOS="$("${COMPOSE[@]}" exec -T db psql -U jzbill -d jzbill_db -tAc "SELECT count(*) FROM usuarios" 2>/dev/null || echo 0)"
 echo ""
 echo "================================================================="
@@ -250,8 +267,9 @@ fi
 echo ""
 echo "Manejo (desde $SCRIPT_DIR):"
 echo "  docker compose --env-file $ENV_FILE ps | logs app | restart app"
-echo "Respaldo de la base:"
+echo "Respaldo de la base (antes de cada cambio de version se hace solo en $CONF/backups/):"
 echo "  docker compose --env-file $ENV_FILE exec -T db pg_dump -U jzbill -Fc jzbill_db > jzbill.dump"
+echo "Actualizar: git pull && sudo ./install-docker.sh. Volver atras: git checkout v<anterior> && sudo ./install-docker.sh"
 echo ""
 echo "IMPORTANTE: respaldar $CLAVE_SECRETOS APARTE del respaldo de la base."
 echo "Sin esa clave los certificados guardados no se pueden recuperar; con las dos juntas, quedan expuestos."

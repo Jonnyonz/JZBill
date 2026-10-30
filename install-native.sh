@@ -14,14 +14,13 @@
 #   /etc/jzbill/jzbill.env            configuracion y secretos (root:jzbill, 0640)
 #   /etc/jzbill/tls/                  certificado HTTPS (cert.pem, key.pem)
 #   servicio systemd "jzbill"         la app con HTTPS propio en el puerto 9443, un worker
+#   /usr/local/sbin/jz-bill-actualizar  actualizador (hash verificado, respaldo, migracion, chequeo y vuelta atras)
 #   base "jzbill_db" y rol "jzbill" propios en el PostgreSQL del servidor
 #
 # Sin proxy: la app sirve HTTPS directamente (la sesion usa cookies Secure: sin HTTPS no se puede ingresar).
 # Si no hay certificado, se genera uno autofirmado para la IP o el dominio: cada terminal tiene que confiar en
 # /etc/jzbill/tls/cert.pem una vez. Para usar uno propio (por ejemplo de un dominio): copiar cert.pem (con la
 # cadena) y key.pem a /etc/jzbill/tls/, borrar /etc/jzbill/tls/.autofirmado y volver a correr.
-#
-# Pendiente para la Fase 9: actualizador jz-bill-actualizar (respaldo, migracion, chequeo, vuelta atras).
 #
 # Idempotente: se puede volver a correr. Los secretos ya generados (clave de la base, token de
 # instalacion, clave maestra) no se pisan. Sin compilador: las dependencias se instalan solo con paquetes
@@ -314,6 +313,7 @@ EOF
 systemctl daemon-reload
 systemctl enable "$SERVICE" > /dev/null
 systemctl restart "$SERVICE"
+install -m 0755 "$DEST/tools/jz-bill-actualizar" /usr/local/sbin/jz-bill-actualizar
 
 echo "Esperando que el servicio responda..."
 if [ "$BIND" = "0.0.0.0" ]; then LOCAL="127.0.0.1"; else LOCAL="$BIND"; fi
@@ -347,6 +347,8 @@ if [ "$USUARIOS" = "0" ]; then
   echo "Token de configuracion inicial: $SETUP_TOKEN"
   echo "La pagina lo pide para crear el administrador (sirve una sola vez)."
 fi
+echo ""
+echo "Para actualizar mas adelante: sudo jz-bill-actualizar (o --buscar para ver si hay una version nueva)."
 echo ""
 echo "IMPORTANTE: respaldar $CLAVE_SECRETOS APARTE del respaldo de la base."
 echo "Sin esa clave los certificados guardados no se pueden recuperar; con las dos juntas, quedan expuestos."

@@ -77,7 +77,55 @@ de solo lectura, HTTPS propio en `https://<ip del equipo>:9443`) y PostgreSQL en
 internet. Solo la app publica un puerto. La configuración, la clave maestra y el certificado HTTPS quedan en
 `/etc/jzbill-docker/` (mismas reglas que la nativa); la base, en el volumen `jzbill_db`. Mismas variables
 opcionales que la nativa. Docker publica el puerto por encima del firewall del sistema: si el equipo está
-expuesto a internet, usar `JZB_BIND`. Para actualizar: `git pull` y volver a correrlo.
+expuesto a internet, usar `JZB_BIND`. Para actualizar: `git pull` y volver a correrlo (antes de cambiar de
+versión respalda la base en `/etc/jzbill-docker/backups/`).
+
+## Actualizar
+
+Instalación nativa, con `jz-bill-actualizar` (lo deja el instalador en `/usr/local/sbin`). Nunca corre solo:
+siempre lo lanza una persona y pide confirmación.
+
+```bash
+sudo jz-bill-actualizar --buscar     # solo avisa si hay una versión nueva
+sudo jz-bill-actualizar              # a la última versión publicada en GitHub Releases
+sudo jz-bill-actualizar --volver     # vuelve a la versión anterior a la última actualización
+```
+
+Pasos: descarga el paquete de la versión (`jz-bill-<versión>.tar.gz` y su `.sha256`) y verifica el hash;
+arma la versión nueva en su propia carpeta con su venv (si falla, no se cambió nada); respalda la base con
+`pg_dump` en `/var/backups/jzbill/`; cambia a la versión nueva y reinicia el servicio (las migraciones corren al
+arrancar); verifica `/api/health`. Si la versión nueva no responde, vuelve sola a la anterior y, si el esquema
+de la base cambió, restaura el respaldo. Sin internet: `--archivo jz-bill-<versión>.tar.gz` (con su `.sha256`
+al lado) o `--desde /ruta/al/repo` clonado. Las versiones se publican con `tools/empaquetar.sh` y
+`gh release create`.
+
+Con Docker: `git pull && sudo ./install-docker.sh`. Para volver atrás: `git checkout v<anterior> &&
+sudo ./install-docker.sh` y, si el esquema cambió, restaurar el respaldo de `/etc/jzbill-docker/backups/` con
+`pg_restore` dentro del contenedor `db`.
+
+## Operación
+
+**Respaldos.** Dos cosas, guardadas por separado: la base (`pg_dump -Fc jzbill_db`; en Docker
+`docker compose --env-file /etc/jzbill-docker/jzbill.env exec -T db pg_dump -U jzbill -Fc jzbill_db`) y la
+clave maestra (`/etc/jzbill/clave-secretos` o `/etc/jzbill-docker/clave-secretos`). Sin la clave, los
+certificados de ARCA y las claves SMTP y de Tracker360 guardados en la base no se recuperan; con las dos juntas,
+quedan expuestos. Si se pierde la clave maestra, se genera una nueva al reinstalar y hay que volver a cargar los
+certificados de ARCA (Razones sociales, Certificados) y las claves de Configuración.
+
+**Certificado de ARCA vencido, comprometido o revocado.** El certificado vale dos años. Desde Razones sociales,
+Certificados: pedir uno nuevo (JZBill genera la clave privada y el CSR; la clave nunca sale del servidor), subir
+el CSR en ARCA (Administrador de Certificados Digitales), bajar el certificado y cargarlo en el mismo pedido. El
+nuevo queda activo y el anterior deja de usarse; el ticket del WSAA se renueva solo. Si el certificado fue
+comprometido, además revocarlo en ARCA. Mientras no haya certificado válido, la emisión electrónica falla con
+el error de ARCA y nada queda a medias (el número no se consume).
+
+**Certificado HTTPS.** El autofirmado se renueva solo al volver a correr el instalador cuando faltan menos de
+30 días; uno propio se reemplaza en `tls/` y se reinicia el servicio (`systemctl restart jzbill` o
+`docker compose ... restart app`).
+
+**Modo prueba y modo empresa.** El modo prueba usa la homologación de ARCA y sus comprobantes se marcan sin
+validez fiscal; el modo empresa emite comprobantes reales. Los dos modos llevan numeración separada y nada del
+modo prueba entra en los reportes, la caja ni Tracker360 del modo empresa.
 
 ## Desarrollo
 

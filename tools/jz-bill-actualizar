@@ -1,0 +1,287 @@
+#!/bin/bash
+# ==============================================================================
+# jz-bill-actualizar: actualiza JZBill (instalacion nativa, install-native.sh)
+# ==============================================================================
+#   sudo jz-bill-actualizar                     ultima version publicada en GitHub (pide confirmacion)
+#   sudo jz-bill-actualizar --buscar            solo dice si hay una version nueva (no cambia nada)
+#   sudo jz-bill-actualizar --version 0.10.0    una version en particular
+#   sudo jz-bill-actualizar --archivo jz-bill-0.10.0.tar.gz   desde un archivo (al lado, su .sha256)
+#   sudo jz-bill-actualizar --desde /ruta/al/repo              desde un repo clonado (git pull previo)
+#   sudo jz-bill-actualizar --volver            vuelve a la version anterior a la ultima actualizacion
+#   Opciones: --si (no pregunta), --forzar (reinstala la misma version o una anterior)
+#
+# Pasos: descarga la version (GitHub Releases: jz-bill-<v>.tar.gz y su .sha256) y verifica el hash; la instala en
+# su propia carpeta con su venv (con hashes, sin compilar: si algo falla aca, no se cambio nada); pide
+# confirmacion; respalda la base (pg_dump); cambia a la version nueva y reinicia (las migraciones corren al
+# arrancar); verifica /api/health. Si no responde con la version nueva, vuelve solo: version anterior y, si el
+# esquema de la base cambio, la base como estaba antes. Nunca corre solo: siempre lo lanza una persona.
+# La clave maestra (/etc/jzbill/clave-secretos), el certificado HTTPS y la configuracion no se tocan.
+# ==============================================================================
+
+set -euo pipefail
+
+BASE_DIR="${JZB_DIR:-/opt/jzbill}"
+RELEASES="$BASE_DIR/releases"
+ENV_FILE="/etc/jzbill/jzbill.env"
+SERVICE="jzbill"
+BACKUP_DIR="/var/backups/jzbill"
+ESTADO="$BASE_DIR/ultima-actualizacion"
+ACTUALIZADOR="/usr/local/sbin/jz-bill-actualizar"
+GUARDAR_VERSIONES=3
+GUARDAR_RESPALDOS=10
+
+uso() { sed -n '5,11p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
+error() { echo "Error: $*" >&2; exit 1; }
+
+MODO="actualizar"; PEDIDA=""; ARCHIVO=""; DESDE=""; FORZAR=0; SI=0
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --buscar) MODO="buscar" ;;
+    --volver) MODO="volver" ;;
+    --version) PEDIDA="${2:-}"; shift ;;
+    --archivo) ARCHIVO="${2:-}"; shift ;;
+    --desde) DESDE="${2:-}"; shift ;;
+    --forzar) FORZAR=1 ;;
+    --si) SI=1 ;;
+    -h|--help) uso 0 ;;
+    *) echo "Opcion desconocida: $1" >&2; uso 2 ;;
+  esac
+  shift
+done
+
+[ "$EUID" -eq 0 ] || error "correr como root (sudo jz-bill-actualizar)."
+[ -f "$ENV_FILE" ] && [ -L "$BASE_DIR/current" ] || error "no se encontro una instalacion nativa (falta $ENV_FILE o $BASE_DIR/current). Con Docker: git pull y sudo ./install-docker.sh."
+
+valor() { sed -n "s/^$1=//p" "$ENV_FILE" | tail -n1; }
+REPO="$(valor UPDATER_GITHUB_REPO)"; REPO="${REPO:-Jonnyonz/JZBill}"
+# El repositorio es publico. Si fuera privado: token de GitHub de solo lectura en UPDATER_GITHUB_TOKEN.
+TOKEN="$(valor UPDATER_GITHUB_TOKEN)"
+AUTH=()
+if [ -n "$TOKEN" ]; then AUTH=(-H "Authorization: Bearer $TOKEN"); fi
+DB_NAME="$(valor POSTGRES_DB)"; DB_USER="$(valor POSTGRES_USER)"
+PUERTO="$(valor JZB_HTTPS_PORT)"; PUERTO="${PUERTO:-9443}"
+HOST_LOCAL="$(valor JZB_BIND)"
+case "$HOST_LOCAL" in ""|0.0.0.0) HOST_LOCAL="127.0.0.1" ;; esac
+
+version_de() { sed -n 's/^__version__ = "\(.*\)"$/\1/p' "$1/backend/jzbill/__init__.py" 2>/dev/null | tr -d '\r'; }
+DIR_ACTUAL="$(readlink -f "$BASE_DIR/current")"
+ACTUAL="$(version_de "$DIR_ACTUAL")"
+[ -n "$ACTUAL" ] || error "no se pudo leer la version instalada."
+
+ultima_publicada() {
+  curl -fsS --max-time 20 "${AUTH[@]}" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$REPO/releases/latest" \
+    | python3 -c 'import json, sys; print(json.load(sys.stdin)["tag_name"].lstrip("v"))'
+}
+
+# Descarga un archivo de la version $1 por la API: $2 nombre, $3 destino.
+bajar_archivo() {
+  local asset
+  asset="$(curl -fsS --max-time 20 "${AUTH[@]}" -H "Accept: application/vnd.github+json" \
+      "https://api.github.com/repos/$REPO/releases/tags/v$1" \
+    | python3 -c 'import json, sys; n = sys.argv[1]; print(next(a["url"] for a in json.load(sys.stdin)["assets"] if a["name"] == n))' "$2")" \
+    || return 1
+  curl -fsSL --max-time 300 "${AUTH[@]}" -H "Accept: application/octet-stream" -o "$3" "$asset"
+}
+
+# a < b (numerica: 0.10.0 es mayor que 0.9.0)
+menor() { [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -n1)" = "$1" ]; }
+
+esquema() { sudo -u postgres psql -d "$DB_NAME" -tAc "SELECT COALESCE(MAX(version), 0) FROM schema_version" 2>/dev/null || echo 0; }
+
+salud() {   # espera que /api/health responda con la version $1 (-k: chequeo local; el certificado lo valida el navegador)
+  for _ in $(seq 1 30); do
+    if curl -fsSk --max-time 5 "https://$HOST_LOCAL:$PUERTO/api/health" 2>/dev/null | grep -q "\"version\":\"$1\""; then
+      return 0
+    fi
+    sleep 2
+  done
+  return 1
+}
+
+usar() {   # cambia el enlace current a la carpeta $1 de forma atomica
+  ln -sfn "$1" "$BASE_DIR/current.tmp"
+  mv -Tf "$BASE_DIR/current.tmp" "$BASE_DIR/current"
+}
+
+confirmar() {   # $1 = texto a escribir
+  if [ "$SI" = "1" ]; then return 0; fi
+  [ -t 0 ] || error "confirmar con --si (no hay terminal para preguntar)."
+  read -r -p "Escribir $1 para continuar: " R
+  [ "$R" = "$1" ] || error "cancelado."
+}
+
+restaurar_base() {   # $1 = respaldo (pg_dump -Fc). El servicio tiene que estar parado.
+  # Se restaura en una base aparte y solo si sale bien reemplaza a la actual: si el respaldo no se puede leer o
+  # falla a mitad de camino, la base actual queda intacta. El respaldo es solo de root: va por la entrada estandar.
+  local nueva="${DB_NAME}_restaurando"
+  echo "Restaurando la base desde $1..."
+  sudo -u postgres dropdb --if-exists "$nueva"
+  sudo -u postgres createdb -O "$DB_USER" "$nueva"
+  if ! sudo -u postgres pg_restore --exit-on-error -d "$nueva" < "$1"; then
+    sudo -u postgres dropdb --if-exists "$nueva"
+    echo "No se pudo restaurar el respaldo $1: la base no se toco." >&2
+    return 1
+  fi
+  sudo -u postgres psql -q -v ON_ERROR_STOP=1 -c "DROP DATABASE \"$DB_NAME\"" -c "ALTER DATABASE \"$nueva\" RENAME TO \"$DB_NAME\""
+}
+
+cd /   # psql como postgres no puede entrar a la carpeta de root
+exec 9> /run/jz-bill-actualizar.lock
+flock -n 9 || error "ya hay otra actualizacion en curso."
+
+# --- Solo buscar ---
+if [ "$MODO" = "buscar" ]; then
+  ULTIMA="$(ultima_publicada)" || error "no se pudo consultar GitHub ($REPO)."
+  echo "Instalada: $ACTUAL"
+  echo "Ultima publicada: $ULTIMA"
+  if menor "$ACTUAL" "$ULTIMA"; then echo "Hay una version nueva: sudo jz-bill-actualizar"; else echo "Esta al dia."; fi
+  exit 0
+fi
+
+# --- Volver a la version anterior ---
+if [ "$MODO" = "volver" ]; then
+  [ -f "$ESTADO" ] || error "no hay registro de una actualizacion anterior."
+  IFS='|' read -r ANTERIOR DIR_ANTERIOR RESPALDO ESQUEMA_ANTES < "$ESTADO"
+  [ -d "$DIR_ANTERIOR" ] || error "la version $ANTERIOR ya no esta en $DIR_ANTERIOR."
+  [ "$DIR_ANTERIOR" != "$DIR_ACTUAL" ] || error "ya esta en uso la version $ANTERIOR."
+  CAMBIA_BASE=0
+  [ "$(esquema)" != "$ESQUEMA_ANTES" ] && CAMBIA_BASE=1
+  echo "Se vuelve de la $ACTUAL a la $ANTERIOR."
+  if [ "$CAMBIA_BASE" = "1" ]; then
+    echo "El esquema de la base cambio con la actualizacion: se restaura el respaldo $RESPALDO."
+    echo "ATENCION: se pierde lo registrado desde la actualizacion (comprobantes emitidos incluidos; los CAE ya"
+    echo "otorgados por ARCA siguen existiendo alla: habria que volver a cargarlos a mano)."
+    [ -f "$RESPALDO" ] || error "no esta el respaldo $RESPALDO."
+  fi
+  confirmar SI
+  systemctl stop "$SERVICE"
+  if [ "$CAMBIA_BASE" = "1" ] && ! restaurar_base "$RESPALDO"; then
+    systemctl start "$SERVICE"
+    error "no se pudo restaurar la base: se sigue con la version $ACTUAL."
+  fi
+  usar "$DIR_ANTERIOR"
+  systemctl start "$SERVICE"
+  salud "$ANTERIOR" || error "la version $ANTERIOR no responde. Ver: journalctl -u $SERVICE -n 50"
+  [ -f "$DIR_ANTERIOR/tools/jz-bill-actualizar" ] && install -m 0755 "$DIR_ANTERIOR/tools/jz-bill-actualizar" "$ACTUALIZADOR"
+  rm -f "$ESTADO"
+  echo "Listo: en uso la version $ANTERIOR."
+  exit 0
+fi
+
+# --- Actualizar: conseguir el codigo de la version nueva ---
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+mkdir -p "$TMP/codigo"
+if [ -n "$DESDE" ]; then
+  [ -f "$DESDE/backend/jzbill/__init__.py" ] && [ -f "$DESDE/requirements.txt" ] || error "$DESDE no es un repo de JZBill (falta backend/jzbill o requirements.txt)."
+  if [ -d "$DESDE/.git" ] && [ -n "$(git -C "$DESDE" status --porcelain --untracked-files=no 2>/dev/null)" ]; then
+    error "$DESDE tiene archivos modificados: se actualiza solo desde un commit limpio (git status)."
+  fi
+  echo "Copiando el codigo desde $DESDE..."
+  rsync -a --exclude '.git' --exclude 'venv' --exclude '.venv' --exclude 'wheelhouse' --exclude 'dist' --exclude '__pycache__' \
+    --exclude '.env' --exclude 'tests' --exclude 'requirements-dev.*' --exclude 'docs' --exclude 'CLAUDE.md' "$DESDE"/ "$TMP/codigo"/
+else
+  if [ -n "$ARCHIVO" ]; then
+    [ -f "$ARCHIVO" ] && [ -f "$ARCHIVO.sha256" ] || error "falta $ARCHIVO o su $ARCHIVO.sha256."
+    cp "$ARCHIVO" "$ARCHIVO.sha256" "$TMP/"
+    PAQUETE="$TMP/$(basename "$ARCHIVO")"
+  else
+    if [ -z "$PEDIDA" ]; then
+      PEDIDA="$(ultima_publicada)" || error "no se pudo consultar la ultima version en GitHub ($REPO). Sin internet: --archivo o --desde."
+    fi
+    [[ "$PEDIDA" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || error "version invalida: $PEDIDA"
+    if [ "$PEDIDA" = "$ACTUAL" ] && [ "$FORZAR" != "1" ]; then
+      echo "Ya esta instalada la version $ACTUAL (usar --forzar para reinstalarla)."
+      exit 0
+    fi
+    echo "Descargando la version $PEDIDA..."
+    PAQUETE="$TMP/jz-bill-$PEDIDA.tar.gz"
+    bajar_archivo "$PEDIDA" "jz-bill-$PEDIDA.tar.gz" "$PAQUETE" \
+      || error "no se pudo descargar jz-bill-$PEDIDA.tar.gz (la version tiene que estar publicada con tools/empaquetar.sh)."
+    bajar_archivo "$PEDIDA" "jz-bill-$PEDIDA.tar.gz.sha256" "$PAQUETE.sha256" || error "no se pudo descargar el .sha256"
+  fi
+  echo "Verificando el hash..."
+  (cd "$TMP" && sha256sum --check --status "$(basename "$PAQUETE").sha256") || error "el hash no coincide: el archivo esta danado o no es el publicado."
+  tar -xzf "$PAQUETE" -C "$TMP/codigo" --strip-components=1 --no-same-owner
+fi
+NUEVA="$(version_de "$TMP/codigo")"
+[[ "$NUEVA" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || error "el codigo no trae una version valida."
+[ -z "$PEDIDA" ] || [ "$PEDIDA" = "$NUEVA" ] || error "se pidio la $PEDIDA pero el paquete es la $NUEVA."
+if [ "$NUEVA" = "$ACTUAL" ] && [ "$FORZAR" != "1" ]; then
+  echo "Ya esta instalada la version $ACTUAL (usar --forzar para reinstalarla)."
+  exit 0
+fi
+if menor "$NUEVA" "$ACTUAL" && [ "$FORZAR" != "1" ]; then
+  error "la $NUEVA es anterior a la instalada ($ACTUAL). Para volver atras: --volver (o --forzar)."
+fi
+
+# --- Build aparte: carpeta y venv de la version nueva (si falla, no se cambio nada) ---
+DEST="$RELEASES/$NUEVA"
+if [ "$DEST" = "$DIR_ACTUAL" ] || { [ -e "$DEST" ] && [ "$(readlink -f "$DEST")" = "$DIR_ACTUAL" ]; }; then
+  DEST="$RELEASES/$NUEVA-$(date +%Y%m%d%H%M%S)"   # reinstalacion de la misma version (--forzar)
+fi
+echo "Preparando la version $NUEVA en $DEST..."
+rm -rf "$DEST"
+mv "$TMP/codigo" "$DEST"
+python3 -m venv "$DEST/venv"
+PIP_ORIGEN=()
+if [ -d "$DEST/wheelhouse" ]; then PIP_ORIGEN=(--no-index --find-links "$DEST/wheelhouse"); fi
+if ! "$DEST/venv/bin/pip" install --quiet --disable-pip-version-check --require-hashes --only-binary=:all: \
+    "${PIP_ORIGEN[@]}" -r "$DEST/requirements.txt"; then
+  rm -rf "$DEST"
+  error "no se pudieron instalar las dependencias de la $NUEVA. No se cambio nada."
+fi
+rm -rf "$DEST/wheelhouse"
+chown -R root:root "$DEST"
+chmod -R a+rX,go-w "$DEST"
+
+# --- Confirmacion, respaldo y cambio ---
+echo ""
+echo "Se va a actualizar JZBill de la $ACTUAL a la $NUEVA. Antes se respalda la base en $BACKUP_DIR."
+echo "Durante el reinicio (unos segundos) las terminales no pueden facturar."
+confirmar SI
+
+echo "Respaldando la base..."
+install -d -m 0700 "$BACKUP_DIR"
+RESPALDO="$BACKUP_DIR/jzbill-$ACTUAL-$(date +%Y%m%d-%H%M%S).dump"
+# shellcheck disable=SC2024  # pg_dump corre como postgres; el archivo lo escribe root a proposito (solo root lo lee).
+if ! sudo -u postgres pg_dump -Fc "$DB_NAME" > "$RESPALDO"; then
+  rm -f "$RESPALDO"
+  rm -rf "$DEST"
+  error "no se pudo respaldar la base. No se cambio nada."
+fi
+chmod 600 "$RESPALDO"
+ESQUEMA_ANTES="$(esquema)"
+
+echo "Cambiando a la version $NUEVA..."
+systemctl stop "$SERVICE"
+usar "$DEST"
+systemctl start "$SERVICE" || true
+if salud "$NUEVA"; then
+  echo "$ACTUAL|$DIR_ACTUAL|$RESPALDO|$ESQUEMA_ANTES" > "$ESTADO"
+  install -m 0755 "$DEST/tools/jz-bill-actualizar" "$ACTUALIZADOR"
+  # Limpieza: se guardan la version en uso, la anterior y las mas nuevas hasta GUARDAR_VERSIONES.
+  ls -1d "$RELEASES"/*/ 2>/dev/null | sed 's#/$##' | grep -vxF "$DEST" | grep -vxF "$DIR_ACTUAL" \
+    | sort -V | head -n -"$((GUARDAR_VERSIONES - 2))" | xargs -r rm -rf || true
+  ls -1t "$BACKUP_DIR"/jzbill-*.dump 2>/dev/null | tail -n +"$((GUARDAR_RESPALDOS + 1))" | xargs -r rm -f || true
+  echo "Listo: actualizado de la $ACTUAL a la $NUEVA (esquema de la base: $(esquema)). Respaldo previo: $RESPALDO"
+  echo "Si hiciera falta volver atras: sudo jz-bill-actualizar --volver"
+  exit 0
+fi
+
+echo "La version $NUEVA no respondio. Volviendo a la $ACTUAL..." >&2
+journalctl -u "$SERVICE" -n 20 --no-pager >&2 || true
+systemctl stop "$SERVICE" || true
+BASE_OK=1
+if [ "$(esquema)" != "$ESQUEMA_ANTES" ]; then
+  restaurar_base "$RESPALDO" || BASE_OK=0
+fi
+usar "$DIR_ACTUAL"
+systemctl start "$SERVICE"
+if salud "$ACTUAL" && [ "$BASE_OK" = "1" ]; then
+  error "la actualizacion fallo y se volvio a la version $ACTUAL (la base quedo como antes). Respaldo: $RESPALDO"
+fi
+if [ "$BASE_OK" = "0" ]; then
+  error "la actualizacion fallo y NO se pudo restaurar la base (tiene las migraciones de la $NUEVA). Restaurar a mano: $RESPALDO"
+fi
+error "la actualizacion fallo y la version $ACTUAL tampoco responde. Ver: journalctl -u $SERVICE -n 50. Respaldo: $RESPALDO"
