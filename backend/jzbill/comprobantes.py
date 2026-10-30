@@ -378,6 +378,9 @@ async def emitir(data: ComprobanteNuevo, request: Request, ctx: dict = Depends(c
     # Ya emitido y confirmado: envio automatico por correo si la razon social lo tiene (Fase 7). Nunca frena la emision.
     from jzbill import correo   # import tardio: correo importa impresion, que importa este modulo
     await correo.enviar_automatico(conn, await conn.fetchrow("SELECT * FROM comprobantes WHERE id = $1", comprobante_id), usuario["id"])
+    # Tracker360 (Fase 8): la venta (modo empresa, con articulos) queda en cola para informarla; nunca frena la emision.
+    from jzbill import tracker_cola   # import tardio: tracker_cola importa es_credito de este modulo
+    await tracker_cola.encolar(conn, comprobante_id)
     return await detalle_comprobante(conn, comprobante_id)
 
 

@@ -88,8 +88,10 @@ async def _validar(conn: asyncpg.Connection, data: ArticuloDatos, moneda: Option
 
 
 _SELECT = """
-    SELECT a.*, p.importe AS precio, p.moneda AS precio_moneda, p.vigencia_desde AS precio_desde
+    SELECT a.*, p.importe AS precio, p.moneda AS precio_moneda, p.vigencia_desde AS precio_desde,
+           sf.disponible AS stock, sf.leido_en AS stock_leido_en
     FROM articulos a
+    LEFT JOIN stock_foto sf ON sf.sku = upper(a.sku)
     LEFT JOIN LATERAL (
         SELECT importe, moneda, vigencia_desde FROM articulos_precios
         WHERE articulo_id = a.id AND moneda = 'PES' AND vigencia_desde <= CURRENT_DATE
@@ -103,7 +105,11 @@ def _salida(fila, precios=None) -> dict:
          "alicuota_iva": fila["alicuota_iva"], "costo": str(fila["costo"]), "activo": fila["activo"],
          "origen": fila["origen"],
          "precio": str(fila["precio"]) if fila["precio"] is not None else None,
-         "precio_desde": fila["precio_desde"].isoformat() if fila["precio_desde"] else None}
+         "precio_desde": fila["precio_desde"].isoformat() if fila["precio_desde"] else None,
+         # Tracker360 (Fase 8): stock de la ultima foto y si el SKU existe alla (None = sin verificar).
+         "stock": str(fila["stock"]) if fila["stock"] is not None else None,
+         "stock_leido_en": fila["stock_leido_en"].isoformat() if fila["stock_leido_en"] else None,
+         "en_tracker": fila["en_tracker"]}
     if precios is not None:
         d["precios"] = [{"id": str(p["id"]), "moneda": p["moneda"], "importe": str(p["importe"]),
                          "vigencia_desde": p["vigencia_desde"].isoformat(),

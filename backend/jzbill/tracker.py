@@ -43,10 +43,24 @@ class ErrorTracker(Exception):
         self.codigo, self.mensaje = codigo, mensaje
 
 
-def llamar(url_base: str, ruta: str, clave: str, params: Optional[dict] = None, timeout: Optional[int] = None) -> dict:
-    """GET JSON a Tracker. Lo reemplazan los tests."""
+def _detalle(datos: bytes) -> str:
+    try:
+        d = json.loads(datos)
+        return str(d.get("detail", ""))[:300] if isinstance(d, dict) else ""
+    except ValueError:
+        return ""
+
+
+def llamar(url_base: str, ruta: str, clave: str, params: Optional[dict] = None, timeout: Optional[int] = None,
+           metodo: str = "GET", cuerpo: Optional[dict] = None) -> dict:
+    """GET o POST JSON a Tracker. Lo reemplazan los tests."""
     url = url_base.rstrip("/") + ruta + ("?" + urllib.parse.urlencode(params) if params else "")
-    pedido = urllib.request.Request(url, method="GET", headers={"Authorization": f"Bearer {clave}", "Accept": "application/json"})
+    cabeceras = {"Authorization": f"Bearer {clave}", "Accept": "application/json"}
+    datos_envio = None
+    if cuerpo is not None:
+        datos_envio = json.dumps(cuerpo).encode("utf-8")
+        cabeceras["Content-Type"] = "application/json"
+    pedido = urllib.request.Request(url, data=datos_envio, method=metodo, headers=cabeceras)
     inicio = time.monotonic()
     try:
         with urllib.request.urlopen(pedido, timeout=timeout or config.ARCA_TIMEOUT) as r:
@@ -59,8 +73,11 @@ def llamar(url_base: str, ruta: str, clave: str, params: Optional[dict] = None, 
     logger.info(f"[TRACKER] {ruta}: HTTP {estado} en {time.monotonic() - inicio:.1f}s")
     if estado == 401:
         raise ErrorTracker("clave", "Tracker360 rechazó la clave del canal.")
-    if estado == 404:
+    if estado == 404 and ruta.endswith(("/items", "/stock")):
         raise ErrorTracker("version", "Tracker360 no tiene esa función: hace falta la versión 1.5.0 o posterior.")
+    if estado in (400, 404, 409, 422):
+        # Rechazo con motivo (SKU inexistente, pedido ya despachado, referencia desconocida): no se arregla reintentando.
+        raise ErrorTracker(f"rechazo.{estado}", _detalle(datos) or "Tracker360 rechazó el pedido.")
     if estado != 200:
         raise ErrorTracker(f"http.{estado}", "Respuesta inesperada de Tracker360.")
     if len(datos) > MAX_RESPUESTA:

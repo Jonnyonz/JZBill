@@ -255,7 +255,7 @@ async function vistaArticulos(contenedor) {
             lista = await api('/api/articulos?limite=200&q=' + encodeURIComponent(buscador.value) + (inactivos.checked ? '&incluir_inactivos=true' : ''));
         } catch (e) { mostrarMensaje(e.message, 'error'); return; }
         vaciar(cuerpo);
-        if (!lista.length) cuerpo.append(el('tr', {}, el('td', { colspan: 7, class: 'vacio' }, 'No hay artículos que coincidan.')));
+        if (!lista.length) cuerpo.append(el('tr', {}, el('td', { colspan: 8, class: 'vacio' }, 'No hay artículos que coincidan.')));
         for (const a of lista) {
             const editar = el('button', { type: 'button', class: 'secundario' }, 'Editar');
             editar.addEventListener('click', () => abrirForm(a));
@@ -265,6 +265,7 @@ async function vistaArticulos(contenedor) {
                 el('td', {}, alicuota(a.alicuota_iva)),
                 el('td', { class: 'mono' }, formatoImporte(a.costo)),
                 el('td', { class: 'mono' }, a.precio === null ? el('span', { class: 'etiqueta' }, 'Sin precio') : formatoImporte(a.precio)),
+                el('td', { class: 'mono' }, a.stock !== null ? formatoStock(a.stock) : a.en_tracker === false ? el('span', { class: 'etiqueta aviso' }, 'No está en Tracker') : ''),
                 el('td', {}, a.activo ? el('span', { class: 'etiqueta ok' }, 'Activo') : el('span', { class: 'etiqueta' }, 'Inactivo'),
                     a.origen === 'tracker' ? el('span', { class: 'etiqueta acento' }, 'Tracker360') : null),
                 el('td', {}, puedeEditar ? editar : null));
@@ -284,7 +285,7 @@ async function vistaArticulos(contenedor) {
             el('div', { class: 'fila-form' }, buscador, el('label', { class: 'casilla' }, inactivos, 'Incluir inactivos')),
             el('div', { class: 'tabla-scroll' }, el('table', {},
                 el('thead', {}, el('tr', {}, el('th', {}, 'SKU'), el('th', {}, 'Descripción'), el('th', {}, 'IVA'),
-                    el('th', {}, 'Costo'), el('th', {}, 'Precio'), el('th', {}, 'Estado'), el('th', {}, ''))), cuerpo))),
+                    el('th', {}, 'Costo'), el('th', {}, 'Precio'), el('th', {}, 'Stock'), el('th', {}, 'Estado'), el('th', {}, ''))), cuerpo))),
         zonaForm);
     await buscar();
 }

@@ -97,3 +97,7 @@ ARCA_TIMEOUT = _entero("ARCA_TIMEOUT", 30)
 
 # Instalacion: "nativa" (install-native.sh), "docker" (install-docker.sh) o "desarrollo". La pagina muestra como actualizar segun el caso.
 JZB_INSTALACION = os.getenv("JZB_INSTALACION", "desarrollo").strip().lower()
+
+# Tracker360 (Fase 8): cada cuantos segundos se procesa la cola de ventas y cada cuantos minutos se relee el stock.
+TRACKER_COLA_SEGUNDOS = _entero("TRACKER_COLA_SEGUNDOS", 30, 5)
+TRACKER_STOCK_MINUTOS = _entero("TRACKER_STOCK_MINUTOS", 15)

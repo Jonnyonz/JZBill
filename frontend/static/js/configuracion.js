@@ -34,6 +34,61 @@ function tarjetaConexionTracker() {
         estado, form);
 }
 
+// ===== Tracker360: stock y cola de ventas (Fase 8, solo administrador) =====
+function tarjetaColaTracker() {
+    const estado = el('p', { class: 'ayuda' }, 'Cargando...');
+    const cuerpo = el('tbody');
+    const leer = el('button', { type: 'button', class: 'secundario' }, 'Leer stock ahora');
+    const procesar = el('button', { type: 'button', class: 'secundario' }, 'Procesar cola ahora');
+    const ETIQUETA = { sincronizado: 'ok', pendiente: 'aviso', error: 'error', descartado: '' };
+    function botonCola(texto, id, accion, clase) {
+        const b = el('button', { type: 'button', class: clase || 'secundario' }, texto);
+        b.addEventListener('click', async () => {
+            const r = await conBoton(b, () => api('/api/integraciones/tracker/cola/' + encodeURIComponent(id) + '/' + accion, { method: 'POST' }));
+            if (r) cargar();
+        });
+        return b;
+    }
+    async function cargar() {
+        let d;
+        try { d = await api('/api/integraciones/tracker/cola'); } catch (e) { vaciar(estado).append(e.message); return; }
+        vaciar(estado).append(...(!d.configurada ? ['Sin conexión con Tracker360: no hay stock ni cola.'] : [
+            el('span', { class: 'etiqueta ' + (d.con_error ? 'error' : d.pendientes ? 'aviso' : 'ok') }, d.pendientes + ' pendientes, ' + d.con_error + ' con error, ' + d.sincronizados + ' sincronizados'), ' ',
+            'Stock leído: ' + (d.stock_leido_en ? fechaHora(d.stock_leido_en) : 'nunca') + ' · Cola procesada: ' + (d.cola_procesada_en ? fechaHora(d.cola_procesada_en) : 'nunca')
+            + (d.sin_tracker ? ' · Artículos activos que no están en Tracker: ' + d.sin_tracker : '')]));
+        vaciar(cuerpo);
+        if (!d.items.length) cuerpo.append(el('tr', {}, el('td', { colspan: 6, class: 'vacio' }, 'Todavía no hay ventas informadas a Tracker360 (solo las de modo empresa con artículos).')));
+        for (const i of d.items) {
+            const acciones = [];
+            if (i.estado === 'error' || i.estado === 'descartado') acciones.push(botonCola('Reintentar', i.id, 'reintentar'));
+            if (i.estado === 'error' || i.estado === 'pendiente') acciones.push(botonCola('Descartar', i.id, 'descartar', 'peligro'));
+            cuerpo.append(el('tr', {},
+                el('td', { class: 'sin-corte' }, fechaHora(i.creado_en)),
+                el('td', {}, i.comprobante, el('div', { class: 'sub mono' }, i.external_ref)),
+                el('td', {}, i.accion === 'venta' ? 'Venta' : 'Cancelación'),
+                el('td', {}, el('span', { class: 'etiqueta ' + (ETIQUETA[i.estado] || '') }, i.estado),
+                    i.respuesta && i.respuesta.document_number ? el('div', { class: 'sub mono' }, 'Pedido ' + i.respuesta.document_number) : null),
+                el('td', {}, i.ultimo_error ? el('span', { class: 'sub' }, i.ultimo_error) : ''),
+                el('td', { class: 'sin-corte' }, acciones)));
+        }
+    }
+    leer.addEventListener('click', async () => {
+        const r = await conBoton(leer, () => api('/api/integraciones/tracker/stock', { method: 'POST' }));
+        if (r) { mostrarMensaje('Stock leído: ' + r.articulos_tracker + ' SKU en Tracker360.', 'ok'); cargar(); }
+    });
+    procesar.addEventListener('click', async () => {
+        const r = await conBoton(procesar, () => api('/api/integraciones/tracker/cola/procesar', { method: 'POST' }));
+        if (r) { mostrarMensaje(r.sincronizados + ' sincronizados, ' + r.con_error + ' con error' + (r.detenida ? '. Detenida: ' + r.detenida : '.'), r.detenida ? 'error' : 'ok'); cargar(); }
+    });
+    cargar();
+    return el('div', { class: 'tarjeta' }, el('h2', {}, 'Tracker360: stock y cola de ventas'),
+        el('p', { class: 'ayuda' }, 'Cada venta de modo empresa con artículos entra en Tracker360 como pedido del canal (entrega en mostrador); una nota de crédito la cancela. Si Tracker no responde, la factura se emite igual y la cola se envía en orden cuando vuelve. El stock leído solo avisa al facturar: no frena la venta.'),
+        estado, el('div', { class: 'acciones' }, leer, procesar),
+        el('div', { class: 'tabla-scroll' }, el('table', {},
+            el('thead', {}, el('tr', {}, el('th', {}, 'Fecha'), el('th', {}, 'Comprobante'), el('th', {}, 'Acción'), el('th', {}, 'Estado'), el('th', {}, 'Error'), el('th', {}, ''))),
+            cuerpo)));
+}
+
 // ===== Correo (SMTP) de la razon social del contexto (solo administrador) =====
 function tarjetaCorreo() {
     const estado = el('p', { class: 'ayuda' }, 'Cargando...');
@@ -87,7 +142,7 @@ function tarjetaCorreo() {
 // ===== Pantalla Configuracion =====
 function vistaConfiguracion(contenedor) {
     vaciar(contenedor);
-    contenedor.append(tarjetaConexionTracker(), tarjetaCorreo(),
+    contenedor.append(tarjetaConexionTracker(), tarjetaColaTracker(), tarjetaCorreo(),
         el('div', { class: 'tarjeta' }, el('h2', {}, 'Dónde está cada cosa'),
             el('p', { class: 'ayuda' }, 'Razones sociales: datos fiscales, puntos de venta, certificados y parámetros de ARCA. Sucursales y Usuarios: quién trabaja dónde. Artículos: importar desde Tracker360 y precios por CSV.')));
 }

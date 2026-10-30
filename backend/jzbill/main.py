@@ -2,6 +2,7 @@ from jztech_core.logging_setup import configure_logging, install_generic_error_h
 
 configure_logging()
 
+import asyncio
 from contextlib import asynccontextmanager
 import logging
 from pathlib import Path
@@ -12,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from jztech_core.security_headers import SecurityHeadersMiddleware
 
 from jzbill import (__version__, arca_api, articulos, auditoria, auth, caja, certificados, clientes, tracker, comprobantes, contexto, correo,
-                    db, formularios, impresion, ofertas, razones_sociales, reportes, sucursales, usuarios)
+                    db, formularios, impresion, ofertas, razones_sociales, reportes, sucursales, tracker_cola, usuarios)
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +48,14 @@ RUTAS_PUBLICAS = [
 async def lifespan(app: FastAPI):
     await db.iniciar()
     logger.info(f"JZBill {__version__} iniciado.")
+    # Tracker360 (Fase 8): cola de ventas y foto de stock en segundo plano.
+    tarea_tracker = asyncio.create_task(tracker_cola.bucle())
     yield
+    tarea_tracker.cancel()
+    try:
+        await tarea_tracker
+    except asyncio.CancelledError:
+        pass
     await db.cerrar()
 
 
@@ -91,6 +99,7 @@ app.include_router(correo.router)
 app.include_router(correo.router_envios)
 app.include_router(tracker.router)
 app.include_router(tracker.router_importacion)
+app.include_router(tracker_cola.router)
 
 
 @app.get("/api/health")

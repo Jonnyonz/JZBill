@@ -43,6 +43,15 @@ function normalTexto(t) {
     return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
 }
 
+// Stock segun la ultima foto de Tracker360 (Fase 8): solo avisa, nunca frena la venta.
+function formatoStock(texto) { return String(texto).replace(/\.?0+$/, '').replace('.', ',') || '0'; }
+
+function etiquetaStock(a) {
+    if (a.stock !== null && a.stock !== undefined) return el('span', { class: 'etiqueta ' + (Number(a.stock) > 0 ? 'ok' : 'error') }, 'Stock ' + formatoStock(a.stock));
+    if (a.en_tracker === false) return el('span', { class: 'etiqueta aviso' }, 'No está en Tracker360');
+    return null;
+}
+
 function abrirImpresion(id) {
     window.open('/comprobantes/' + encodeURIComponent(id) + '/imprimir', '_blank', 'noopener');
 }
@@ -226,6 +235,16 @@ async function vistaFacturar(contenedor) {
     }
     function evaluarOfertasLuego() { clearTimeout(esperaOfertas); esperaOfertas = setTimeout(evaluarOfertas, 250); }
 
+    // Stock de la linea segun la foto de Tracker360: en rojo si la cantidad supera lo leido. Solo avisa.
+    function pintarStock(fila) {
+        vaciar(fila._zonaStock);
+        if (fila._stock === null) return;
+        const cant = normalizarNumero(fila._cantidad.value, 3);
+        const falta = cant !== null && Number(cant) > Number(fila._stock);
+        fila._zonaStock.append(el('span', { class: 'etiqueta ' + (falta ? 'error' : Number(fila._stock) > 0 ? 'ok' : 'aviso') },
+            'Stock Tracker360: ' + formatoStock(fila._stock)));
+    }
+
     // Linea libre (sin articulo) o desde un articulo del catalogo: descripcion y precio quedan copiados y editables.
     function agregarLinea(articulo) {
         const descripcion = el('input', { maxlength: 250, required: true, placeholder: 'Descripción', 'aria-label': 'Descripción', value: articulo ? articulo.descripcion : '' });
@@ -234,12 +253,15 @@ async function vistaFacturar(contenedor) {
         const importe = el('span', { class: 'mono' }, '-');
         const quitar = el('button', { type: 'button', class: 'peligro', title: 'Quitar línea' }, 'Quitar');
         const zonaOferta = el('div', {});
-        const fila = el('tr', {}, el('td', { class: 'col-descripcion' }, articulo ? el('div', { class: 'sub mono' }, articulo.sku) : null, descripcion, zonaOferta),
+        const zonaStock = el('div', {});
+        const fila = el('tr', {}, el('td', { class: 'col-descripcion' }, articulo ? el('div', { class: 'sub mono' }, articulo.sku) : null, descripcion, zonaOferta, zonaStock),
             el('td', { class: 'col-numero' }, cantidad), el('td', { class: 'col-numero' }, precio), el('td', { class: 'col-importe' }, importe), el('td', {}, quitar));
         fila._descripcion = descripcion; fila._cantidad = cantidad; fila._precio = precio; fila._importe = importe;
         fila._articuloId = articulo ? articulo.id : null;
         fila._zonaOferta = zonaOferta; fila._oferta = null; fila._sinOferta = false;
+        fila._zonaStock = zonaStock; fila._stock = articulo && articulo.stock !== null && articulo.stock !== undefined ? articulo.stock : null;
         for (const i of [cantidad, precio]) i.addEventListener('input', recalcular);
+        cantidad.addEventListener('input', () => pintarStock(fila));
         if (articulo) precio.addEventListener('input', evaluarOfertasLuego);
         quitar.addEventListener('click', () => {
             if (cuerpoLineas.children.length > 1) { fila.remove(); recalcular(); }
@@ -249,6 +271,7 @@ async function vistaFacturar(contenedor) {
         if (articulo && cuerpoLineas.children.length === 1 && !primera._articuloId && !primera._descripcion.value && !primera._precio.value) primera.remove();
         cuerpoLineas.append(fila);
         recalcular();
+        pintarStock(fila);
         if (articulo) evaluarOfertas();
         (articulo ? cantidad : descripcion).focus();
         if (articulo) cantidad.select();
@@ -280,7 +303,7 @@ async function vistaFacturar(contenedor) {
     async function elegirArticulo(a) {
         let detalle = a;
         try { detalle = await api('/api/articulos/' + encodeURIComponent(a.id)); } catch (e) { mostrarMensaje(e.message, 'error'); return; }
-        agregarLinea({ id: a.id, sku: a.sku, descripcion: a.descripcion, precio: precioVigente(detalle, selMoneda.value) });
+        agregarLinea({ id: a.id, sku: a.sku, descripcion: a.descripcion, precio: precioVigente(detalle, selMoneda.value), stock: detalle.stock });
         buscadorArticulo.value = ''; vaciar(resultadosArticulo); buscadorArticulo.focus();
     }
     buscadorArticulo.addEventListener('input', () => {
@@ -292,7 +315,7 @@ async function vistaFacturar(contenedor) {
             try { lista = await api('/api/articulos?limite=8&q=' + encodeURIComponent(texto)); } catch (e) { mostrarMensaje(e.message, 'error'); }
             vaciar(resultadosArticulo).append(...(lista.length ? lista.map(a => {
                 const b = el('button', { type: 'button', class: 'opcion-cliente' }, el('span', {}, el('strong', { class: 'mono' }, a.sku), ' ', a.descripcion),
-                    el('span', { class: 'sub mono' }, a.precio === null ? 'sin precio' : selMoneda.value === 'PES' ? formatoImporte(a.precio) : ''));
+                    el('span', { class: 'sub mono' }, a.precio === null ? 'sin precio' : selMoneda.value === 'PES' ? formatoImporte(a.precio) : ''), etiquetaStock(a));
                 b.addEventListener('click', () => elegirArticulo(a));
                 return b;
             }) : [el('p', { class: 'ayuda' }, 'Sin resultados. Podés cargar una línea libre con "Agregar línea".')]));
