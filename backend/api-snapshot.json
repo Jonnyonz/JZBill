@@ -1,4 +1,11 @@
 {
+  "DELETE /api/caja/planillas/{planilla_id}/movimientos/{movimiento_id}": {
+    "cuerpo": false,
+    "params": [
+      "path:movimiento_id",
+      "path:planilla_id"
+    ]
+  },
   "GET /": {
     "cuerpo": false,
     "params": []
@@ -36,6 +43,41 @@
   "GET /api/auth/setup/status": {
     "cuerpo": false,
     "params": []
+  },
+  "GET /api/caja/cajas": {
+    "cuerpo": false,
+    "params": [
+      "query:incluir_inactivas"
+    ]
+  },
+  "GET /api/caja/categorias": {
+    "cuerpo": false,
+    "params": [
+      "query:incluir_inactivas"
+    ]
+  },
+  "GET /api/caja/medios-pago": {
+    "cuerpo": false,
+    "params": [
+      "query:incluir_inactivos"
+    ]
+  },
+  "GET /api/caja/opciones": {
+    "cuerpo": false,
+    "params": []
+  },
+  "GET /api/caja/planillas": {
+    "cuerpo": false,
+    "params": [
+      "query:caja_id",
+      "query:limite"
+    ]
+  },
+  "GET /api/caja/planillas/{planilla_id}": {
+    "cuerpo": false,
+    "params": [
+      "path:planilla_id"
+    ]
   },
   "GET /api/clientes": {
     "cuerpo": false,
@@ -258,6 +300,42 @@
     "cuerpo": true,
     "params": []
   },
+  "POST /api/caja/cajas": {
+    "cuerpo": true,
+    "params": []
+  },
+  "POST /api/caja/cajas/{caja_id}/abrir": {
+    "cuerpo": true,
+    "params": [
+      "path:caja_id"
+    ]
+  },
+  "POST /api/caja/categorias": {
+    "cuerpo": true,
+    "params": []
+  },
+  "POST /api/caja/medios-pago": {
+    "cuerpo": true,
+    "params": []
+  },
+  "POST /api/caja/planillas/{planilla_id}/cerrar": {
+    "cuerpo": true,
+    "params": [
+      "path:planilla_id"
+    ]
+  },
+  "POST /api/caja/planillas/{planilla_id}/movimientos": {
+    "cuerpo": true,
+    "params": [
+      "path:planilla_id"
+    ]
+  },
+  "POST /api/caja/planillas/{planilla_id}/reabrir": {
+    "cuerpo": false,
+    "params": [
+      "path:planilla_id"
+    ]
+  },
   "POST /api/clientes": {
     "cuerpo": true,
     "params": []
@@ -361,6 +439,24 @@
     "cuerpo": true,
     "params": [
       "path:articulo_id"
+    ]
+  },
+  "PUT /api/caja/cajas/{caja_id}": {
+    "cuerpo": true,
+    "params": [
+      "path:caja_id"
+    ]
+  },
+  "PUT /api/caja/categorias/{categoria_id}": {
+    "cuerpo": true,
+    "params": [
+      "path:categoria_id"
+    ]
+  },
+  "PUT /api/caja/medios-pago/{medio_id}": {
+    "cuerpo": true,
+    "params": [
+      "path:medio_id"
     ]
   },
   "PUT /api/clientes/{cliente_id}": {

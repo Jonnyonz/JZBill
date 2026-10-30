@@ -2,6 +2,31 @@
 
 Cambios de JZBill, del más nuevo al más viejo.
 
+## 0.7.0 - 2026-10-30
+
+Fase 6: caja.
+
+### Agregado
+- Caja: pantalla Caja en la barra lateral (ven todos; abren, operan y cierran administrador, supervisor y cajero;
+  configuran administrador y supervisor). Cada razón social tiene sus cajas (local, tesorería o dueño, opcionalmente
+  atadas a una sucursal), sus medios de pago (efectivo, transferencia, tarjetas, cheque y otro, configurables) y
+  sus categorías de caja (configurables; se cargan predeterminadas). Cada caja lleva una planilla por día y modo, una
+  sola abierta a la vez: apertura con fondo inicial, movimientos manuales siempre con categoría y medio de pago,
+  retiro a otra caja (salida acá y entrada espejo en la caja de destino, las dos en una misma transacción y
+  enlazadas) y cierre con arqueo por medio de pago y moneda (esperado según la planilla, contado y diferencia).
+  Reabrir una planilla cerrada: administrador o supervisor. Totales por medio de pago y por categoría. Lo del modo
+  prueba nunca se suma a la caja real.
+- Cobro al facturar: en Facturar, bloque Cobro con la caja abierta y el total repartido por medio de pago (el
+  primer renglón toma el resto). El servidor exige una planilla abierta en el modo del contexto y que la suma sea
+  igual al total; cada parte queda como movimiento ligado al comprobante, una nota de crédito genera la salida.
+  Sin caja abierta, o en cuenta corriente, el comprobante se emite sin movimiento de caja. El impreso y el detalle
+  del comprobante muestran la forma de pago.
+
+### Cambiado
+- Contrato de la API: 97 operaciones (17 nuevas bajo `/api/caja`); `POST /api/comprobantes` acepta `pagos` y
+  `caja_id` opcionales y el detalle devuelve `pagos`.
+- Migración 0012 (medios_pago, caja_categorias, cajas, caja_planillas, caja_movimientos, caja_arqueos).
+
 ## 0.6.0 - 2026-10-30
 
 Fase 5: artículos, precios, acciones masivas, Tracker360 y ofertas.
