@@ -5,7 +5,7 @@
 
 const ROLES = { administrador: 'Administrador', supervisor: 'Supervisor', cajero: 'Cajero', solo_lectura: 'Solo lectura' };
 const MODOS = { empresa: 'Empresa', prueba: 'Prueba' };
-const TITULOS = { inicio: 'Inicio', facturar: 'Facturar', comprobantes: 'Comprobantes', clientes: 'Clientes', articulos: 'Artículos', razones: 'Razones sociales',
+const TITULOS = { inicio: 'Inicio', facturar: 'Facturar', comprobantes: 'Comprobantes', clientes: 'Clientes', articulos: 'Artículos', ofertas: 'Ofertas', razones: 'Razones sociales',
                   sucursales: 'Sucursales', usuarios: 'Usuarios', auditoria: 'Auditoría', configuracion: 'Configuración', cuenta: 'Mi cuenta' };
 const ROLES_EMITEN = ['administrador', 'supervisor', 'cajero'];
 const VISTAS_ADMIN = ['razones', 'sucursales', 'usuarios', 'auditoria', 'configuracion'];
@@ -147,6 +147,7 @@ function mostrarVista(nombre) {
     else if (nombre === 'comprobantes') vistaComprobantes(contenedor);
     else if (nombre === 'clientes') vistaClientes(contenedor);
     else if (nombre === 'articulos') vistaArticulos(contenedor);
+    else if (nombre === 'ofertas') vistaOfertas(contenedor);
     else if (nombre === 'razones') vistaRazones(contenedor);
     else if (nombre === 'sucursales') vistaSucursales(contenedor);
     else if (nombre === 'usuarios') vistaUsuarios(contenedor);

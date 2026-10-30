@@ -104,8 +104,7 @@ async function vistaFacturar(contenedor) {
     const nroDoc = el('input', { inputmode: 'numeric', maxlength: 13, placeholder: '0 para consumidor final', value: '0' });
     const nombre = el('input', { maxlength: 200, placeholder: 'Consumidor final' });
     const domicilio = el('input', { maxlength: 300, placeholder: 'Obligatorio si no es consumidor final' });
-    const selVenta = el('select', {}, ['Contado', 'Cuenta corriente', 'Tarjeta de débito', 'Tarjeta de crédito',
-        'Transferencia', 'Cheque', 'Otra'].map(v => el('option', { value: v }, v)));
+    const selVenta = el('select', {}, CONDICIONES_VENTA.map(v => el('option', { value: v }, v)));
     const selCondicion = el('select', {});
     let clienteId = null;
     const buscadorCliente = el('input', { type: 'search', placeholder: 'Buscar cliente por nombre o documento', 'aria-label': 'Buscar cliente', maxlength: 100 });
@@ -184,13 +183,40 @@ async function vistaFacturar(contenedor) {
         let total = 0n;
         for (const fila of cuerpoLineas.children) {
             const cant = normalizarNumero(fila._cantidad.value, 3);
-            const precio = normalizarNumero(fila._precio.value, 2);
+            // Con oferta, el importe sale del precio final que calculo el servidor para el precio de lista tipeado.
+            const precio = fila._oferta && fila._oferta.precio_lista === normalizarNumero(fila._precio.value, 2)
+                ? fila._oferta.precio_final : normalizarNumero(fila._precio.value, 2);
             const importe = cant !== null && precio !== null ? importeCentavos(cant, precio) : null;
             fila._importe.textContent = importe === null ? '-' : formatoCentavos(importe);
             if (importe !== null) total += importe;
         }
         totalTexto.textContent = selMoneda.value + ' ' + formatoCentavos(total);
     }
+
+    // Ofertas: el servidor propone la mejor para cada linea con articulo (medio de pago y moneda de la cabecera);
+    // el cajero la ve bajo la descripcion y puede quitarla (la linea queda sin oferta hasta volver a cargarla).
+    let esperaOfertas = null;
+    function pintarOferta(fila) {
+        vaciar(fila._zonaOferta);
+        if (!fila._oferta) return;
+        const quitar = el('button', { type: 'button', class: 'secundario', title: 'Quitar la oferta de esta línea' }, 'Quitar');
+        quitar.addEventListener('click', () => { fila._oferta = null; fila._sinOferta = true; pintarOferta(fila); recalcular(); });
+        fila._zonaOferta.append(el('div', { class: 'oferta-linea' },
+            el('span', { class: 'etiqueta ok' }, 'Oferta'), ' ', fila._oferta.detalle, ': ',
+            el('span', { class: 'mono' }, formatoImporte(fila._oferta.precio_lista) + ' \u2192 ' + formatoImporte(fila._oferta.precio_final)), ' ', quitar));
+    }
+    async function evaluarOfertas() {
+        const filas = [...cuerpoLineas.children].filter(f => f._articuloId && !f._sinOferta && normalizarNumero(f._precio.value, 2) !== null);
+        if (!filas.length) return;
+        let r;
+        try {
+            r = await api('/api/ofertas/evaluar', { method: 'POST', body: { condicion_venta: selVenta.value, moneda: selMoneda.value,
+                lineas: filas.map(f => ({ articulo_id: f._articuloId, precio_unitario: normalizarNumero(f._precio.value, 2) })) } });
+        } catch (e) { mostrarMensaje(e.message, 'error'); return; }
+        filas.forEach((f, i) => { if (f.isConnected) { f._oferta = r[i] || null; pintarOferta(f); } });
+        recalcular();
+    }
+    function evaluarOfertasLuego() { clearTimeout(esperaOfertas); esperaOfertas = setTimeout(evaluarOfertas, 250); }
 
     // Linea libre (sin articulo) o desde un articulo del catalogo: descripcion y precio quedan copiados y editables.
     function agregarLinea(articulo) {
@@ -199,11 +225,14 @@ async function vistaFacturar(contenedor) {
         const precio = el('input', { inputmode: 'decimal', required: true, placeholder: '0,00', 'aria-label': 'Precio unitario', value: articulo && articulo.precio !== null ? String(articulo.precio).replace('.', ',') : '' });
         const importe = el('span', { class: 'mono' }, '-');
         const quitar = el('button', { type: 'button', class: 'peligro', title: 'Quitar línea' }, 'Quitar');
-        const fila = el('tr', {}, el('td', { class: 'col-descripcion' }, articulo ? el('div', { class: 'sub mono' }, articulo.sku) : null, descripcion),
+        const zonaOferta = el('div', {});
+        const fila = el('tr', {}, el('td', { class: 'col-descripcion' }, articulo ? el('div', { class: 'sub mono' }, articulo.sku) : null, descripcion, zonaOferta),
             el('td', { class: 'col-numero' }, cantidad), el('td', { class: 'col-numero' }, precio), el('td', { class: 'col-importe' }, importe), el('td', {}, quitar));
         fila._descripcion = descripcion; fila._cantidad = cantidad; fila._precio = precio; fila._importe = importe;
         fila._articuloId = articulo ? articulo.id : null;
+        fila._zonaOferta = zonaOferta; fila._oferta = null; fila._sinOferta = false;
         for (const i of [cantidad, precio]) i.addEventListener('input', recalcular);
+        if (articulo) precio.addEventListener('input', evaluarOfertasLuego);
         quitar.addEventListener('click', () => {
             if (cuerpoLineas.children.length > 1) { fila.remove(); recalcular(); }
         });
@@ -212,6 +241,7 @@ async function vistaFacturar(contenedor) {
         if (articulo && cuerpoLineas.children.length === 1 && !primera._articuloId && !primera._descripcion.value && !primera._precio.value) primera.remove();
         cuerpoLineas.append(fila);
         recalcular();
+        if (articulo) evaluarOfertas();
         (articulo ? cantidad : descripcion).focus();
         if (articulo) cantidad.select();
     }
@@ -263,7 +293,8 @@ async function vistaFacturar(contenedor) {
 
     selFormulario.addEventListener('change', actualizarCabecera);
     selConcepto.addEventListener('change', actualizarCabecera);
-    selMoneda.addEventListener('change', recalcular);
+    selMoneda.addEventListener('change', () => { recalcular(); evaluarOfertas(); });
+    selVenta.addEventListener('change', evaluarOfertas);
     selDoc.addEventListener('change', () => { if (selDoc.value === '99') nroDoc.value = '0'; });
 
     const botonAgregar = el('button', { type: 'button', class: 'secundario' }, 'Agregar línea');
@@ -308,7 +339,8 @@ async function vistaFacturar(contenedor) {
                 mostrarMensaje('Revisá las líneas: descripción, cantidad (hasta 3 decimales) y precio (hasta 2).', 'error');
                 return;
             }
-            lineas.push({ descripcion: fila._descripcion.value.trim(), cantidad, precio_unitario: precio, articulo_id: fila._articuloId || null });
+            lineas.push({ descripcion: fila._descripcion.value.trim(), cantidad, precio_unitario: precio, articulo_id: fila._articuloId || null,
+                          oferta_id: fila._oferta && fila._oferta.precio_lista === precio ? fila._oferta.oferta_id : null });
         }
         const cuerpo = {
             formulario_id: f.id, concepto: Number(selConcepto.value), moneda: selMoneda.value, lineas,

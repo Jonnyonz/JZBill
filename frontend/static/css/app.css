@@ -443,3 +443,5 @@ button.boton-icono svg { width: 18px; height: 18px; }
 .ventana::backdrop { background: rgba(0, 0, 0, 0.5); }
 .ventana .tarjeta { margin: 0 0 1rem; }
 .cerrar-ventana { padding: 0.2rem 0.7rem; font-size: 1.3rem; line-height: 1; }
+.oferta-linea { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; font-size: 0.82rem; color: var(--text-muted); }
+.oferta-linea button { padding: 0.15rem 0.5rem; font-size: 0.78rem; }

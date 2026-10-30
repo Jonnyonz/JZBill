@@ -90,7 +90,9 @@ async def imprimir(comprobante_id: str, ctx: dict = Depends(contexto_requerido),
     numero = f"{c['punto_venta']:05d}-{c['numero']:08d}"
     titulo = c["nombre"][:-2] if c["letra"] and c["nombre"].endswith(" " + c["letra"]) else c["nombre"]
     filas = "".join(
-        f"<tr><td>{e(l['descripcion'])}</td><td class=\"num\">{e(_cantidad(l['cantidad']))}</td>"
+        f"<tr><td>{e(l['descripcion'])}"
+        + (f"<br><small>{e(l['oferta_detalle'])} (precio de lista {e(_importe(l['precio_lista']))})</small>" if l["oferta_detalle"] else "")
+        + f"</td><td class=\"num\">{e(_cantidad(l['cantidad']))}</td>"
         f"<td class=\"num\">{e(_importe(l['precio_unitario']))}</td><td class=\"num\">{e(_importe(l['importe']))}</td></tr>"
         for l in lineas)
 

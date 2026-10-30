@@ -20,7 +20,7 @@ import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
-from jzbill import config
+from jzbill import config, ofertas
 from jzbill.arca import parametros, servicio, soap, wsfev1
 from jzbill.arca_api import _error as error_arca
 from jzbill.auth import client_ip, registrar
@@ -39,8 +39,7 @@ HORA_AR = timezone(timedelta(hours=-3))
 LETRAS_SOPORTADAS = ("C",)
 # RG 1415 Anexo II B, e): condiciones de venta ("contado, cuenta corriente, etc."). Los medios de pago con su
 # detalle son de la Fase 6 (caja).
-CondicionVenta = Literal["Contado", "Cuenta corriente", "Tarjeta de débito", "Tarjeta de crédito", "Transferencia",
-                         "Cheque", "Otra"]
+CondicionVenta = Literal[ofertas.CONDICIONES_VENTA]
 
 
 class Linea(BaseModel):
@@ -49,6 +48,8 @@ class Linea(BaseModel):
     precio_unitario: Decimal = Field(ge=0, max_digits=15, decimal_places=2)
     # Articulo del catalogo (Fase 5): la linea recuerda de cual salio; descripcion y precio quedan copiados.
     articulo_id: Optional[str] = Field(default=None, max_length=40)
+    # Oferta propuesta por /api/ofertas/evaluar que el cajero dejo en la linea (Fase 5); se vuelve a validar.
+    oferta_id: Optional[str] = Field(default=None, max_length=40)
 
 
 class Receptor(BaseModel):
@@ -121,7 +122,8 @@ def calcular(lineas: List[Linea]) -> tuple:
     for orden, linea in enumerate(lineas, start=1):
         importe = (linea.cantidad * linea.precio_unitario).quantize(CENTAVO, rounding=ROUND_HALF_UP)
         salida.append({"orden": orden, "descripcion": linea.descripcion.strip(), "cantidad": linea.cantidad,
-                       "precio_unitario": linea.precio_unitario, "importe": importe, "articulo_id": linea.articulo_id, "sku": None})
+                       "precio_unitario": linea.precio_unitario, "importe": importe, "articulo_id": linea.articulo_id, "sku": None,
+                       "oferta_id": linea.oferta_id, "precio_lista": None, "descuento": Decimal("0.00"), "oferta_detalle": None})
     return salida, sum((l["importe"] for l in salida), Decimal("0.00"))
 
 
@@ -201,17 +203,22 @@ async def emitir(data: ComprobanteNuevo, request: Request, ctx: dict = Depends(c
         cliente_id = await conn.fetchval("SELECT id FROM clientes WHERE id = $1 AND activo", uuid_o_404(data.cliente_id))
         if cliente_id is None:
             raise HTTPException(404, "No encontrado.")
+    hoy = datetime.now(HORA_AR).date()
     lineas, total = calcular(data.lineas)
     # Lineas con articulo: tiene que existir y estar activo; se guarda su id y su SKU en la linea.
     ids = [uuid_o_404(l["articulo_id"]) for l in lineas if l["articulo_id"]]
+    articulos = {}
     if ids:
-        articulos = {a["id"]: a for a in await conn.fetch("SELECT id, sku, activo FROM articulos WHERE id = ANY($1::uuid[])", ids)}
+        articulos = {a["id"]: a for a in await conn.fetch("SELECT id, sku, categoria, activo FROM articulos WHERE id = ANY($1::uuid[])", ids)}
         for l in lineas:
             if l["articulo_id"]:
                 a = articulos.get(uuid_o_404(l["articulo_id"]))
                 if a is None or not a["activo"]:
                     raise HTTPException(400, f"El artículo de la línea {l['orden']} no existe o está inactivo.")
                 l["articulo_id"], l["sku"] = a["id"], a["sku"]
+    # Ofertas que el cajero dejo en las lineas: se validan y se calculan aca (el precio final es el que se cobra).
+    await ofertas.aplicar(conn, lineas, articulos, data.condicion_venta, data.moneda, hoy)
+    total = sum((l["importe"] for l in lineas), Decimal("0.00"))
     if total <= 0:
         raise HTTPException(400, "El total tiene que ser mayor a cero.")
     if data.concepto in (2, 3) and not (data.servicio_desde and data.servicio_hasta and data.vencimiento_pago):
@@ -268,7 +275,6 @@ async def emitir(data: ComprobanteNuevo, request: Request, ctx: dict = Depends(c
         except soap.ErrorArca as e:
             raise error_arca(e)
 
-    hoy = datetime.now(HORA_AR).date()
     try:
         async with conn.transaction():
             await conn.execute("SET LOCAL lock_timeout = '20s'")
@@ -336,9 +342,11 @@ async def emitir(data: ComprobanteNuevo, request: Request, ctx: dict = Depends(c
                 emisor_domicilio, rs["ingresos_brutos"], rs["inicio_actividades"], data.receptor.domicilio.strip(),
                 data.condicion_venta, cliente_id)
             await conn.executemany("""
-                INSERT INTO comprobante_lineas (comprobante_id, orden, descripcion, cantidad, precio_unitario, importe, articulo_id, sku)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-            """, [(comprobante_id, l["orden"], l["descripcion"], l["cantidad"], l["precio_unitario"], l["importe"], l["articulo_id"], l["sku"])
+                INSERT INTO comprobante_lineas (comprobante_id, orden, descripcion, cantidad, precio_unitario, importe, articulo_id, sku,
+                    precio_lista, descuento, oferta_id, oferta_detalle)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            """, [(comprobante_id, l["orden"], l["descripcion"], l["cantidad"], l["precio_unitario"], l["importe"], l["articulo_id"], l["sku"],
+                   l["precio_lista"], l["descuento"], l["oferta_id"] if l["oferta_detalle"] else None, l["oferta_detalle"])
                   for l in lineas])
             await conn.execute("UPDATE contadores SET ultimo_numero = $3, actualizado_en = now() "
                                "WHERE formulario_id = $1 AND modo = $2", f["id"], modo, numero)
@@ -373,7 +381,9 @@ def _salida(c, lineas=None) -> dict:
     if lineas is not None:
         salida["lineas"] = [{"descripcion": l["descripcion"], "cantidad": str(l["cantidad"]),
                              "precio_unitario": str(l["precio_unitario"]), "importe": str(l["importe"]),
-                             "sku": l["sku"], "articulo_id": str(l["articulo_id"]) if l["articulo_id"] else None} for l in lineas]
+                             "sku": l["sku"], "articulo_id": str(l["articulo_id"]) if l["articulo_id"] else None,
+                             "precio_lista": str(l["precio_lista"]) if l["precio_lista"] is not None else None,
+                             "descuento": str(l["descuento"]), "oferta": l["oferta_detalle"]} for l in lineas]
         salida["servicio_desde"] = c["servicio_desde"].isoformat() if c["servicio_desde"] else None
         salida["servicio_hasta"] = c["servicio_hasta"].isoformat() if c["servicio_hasta"] else None
         salida["vencimiento_pago"] = c["vencimiento_pago"].isoformat() if c["vencimiento_pago"] else None
