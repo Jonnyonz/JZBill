@@ -56,6 +56,16 @@ function abrirImpresion(id) {
     window.open('/comprobantes/' + encodeURIComponent(id) + '/imprimir', '_blank', 'noopener');
 }
 
+function abrirPdf(id) {
+    window.open('/comprobantes/' + encodeURIComponent(id) + '/pdf', '_blank', 'noopener');
+}
+
+function botonPdf(id, clase) {
+    const b = el('button', { type: 'button', class: clase }, 'PDF');
+    b.addEventListener('click', () => abrirPdf(id));
+    return b;
+}
+
 // ===== Pantalla Facturar =====
 async function vistaFacturar(contenedor) {
     const vigente = redibujar(contenedor);
@@ -542,7 +552,7 @@ function mostrarEmitido(zona, c, nuevo, emailSugerido) {
             c.pagos && c.pagos.length ? el('dd', {}, c.pagos.map(p => p.medio + ' ' + formatoImporte(p.importe)).join('; ') + ' (' + c.pagos[0].caja + ')') : null,
             c.cae ? el('dt', {}, 'CAE') : null, c.cae ? el('dd', { class: 'mono' }, c.cae) : null,
             c.cae ? el('dt', {}, 'Vencimiento del CAE') : null, c.cae ? el('dd', {}, fecha(c.cae_vencimiento)) : null),
-        el('div', { class: 'acciones' }, imprimir, correo, otro), envios));
+        el('div', { class: 'acciones' }, imprimir, botonPdf(c.id, 'secundario'), correo, otro), envios));
 }
 
 // ===== Pantalla Comprobantes =====
@@ -584,7 +594,7 @@ async function vistaComprobantes(contenedor) {
                     c.receptor.doc_nro !== '0' ? el('div', { class: 'sub mono' }, c.receptor.doc_nro) : null),
                 el('td', { class: 'sin-corte' }, `${c.moneda} ${formatoImporte(c.total)}`),
                 el('td', { class: 'mono' }, c.cae || el('span', { class: 'etiqueta' }, 'No electrónico')),
-                el('td', { class: 'sin-corte' }, imprimir, ' ', emite() ? correo : null)));
+                el('td', { class: 'sin-corte' }, imprimir, ' ', botonPdf(c.id, 'secundario'), ' ', emite() ? correo : null)));
         }
         ultimo = lista.length ? lista[lista.length - 1].creado_en : ultimo;
         mas.classList.toggle('oculto', lista.length < 50);

@@ -8,8 +8,8 @@
   la emision: si falla, queda registrado en comprobante_envios y el comprobante se puede reenviar.
 - Mensaje: cuerpo HTML con los mismos datos de la representacion impresa (emisor, receptor, detalle, total, CAE,
   leyenda de prueba) y el QR oficial de ARCA como imagen PNG incrustada (segno la genera sin dependencias), mas una
-  version en texto plano. Sin PDF adjunto: no hay biblioteca de PDF aprobada (decision 2026-10-08); cuando la haya,
-  el adjunto entra aca.
+  version en texto plano, y el comprobante en PDF adjunto (impresion.comprobante_pdf, hecho con la biblioteca
+  estandar: pdf.py).
 
 Todo con la biblioteca estandar: smtplib, ssl, email. El envio real se hace en un hilo (asyncio.to_thread)."""
 
@@ -26,7 +26,6 @@ from io import BytesIO
 from typing import Literal, Optional
 
 import asyncpg
-import segno
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
@@ -35,7 +34,7 @@ from jzbill.auth import client_ip, registrar
 from jzbill.contexto import contexto_requerido
 from jzbill.cuit import formatear_cuit
 from jzbill.db import get_conn
-from jzbill.impresion import CONDICIONES_EMISOR, _cantidad, _descripcion, _fecha, _importe, texto_qr
+from jzbill.impresion import _cantidad, _fecha, _importe, comprobante_pdf, datos_impresion, nombre_archivo
 from jzbill.permisos import es_admin, uuid_o_404
 
 logger = logging.getLogger(__name__)
@@ -154,13 +153,9 @@ def _base(cfg, destinatario: str, asunto: str) -> EmailMessage:
 
 # --- Mensaje del comprobante ---
 async def mensaje_comprobante(conn: asyncpg.Connection, cfg, c, destinatario: str) -> EmailMessage:
-    rs = await conn.fetchrow("SELECT * FROM razones_sociales WHERE id = $1", c["razon_social_id"])
-    lineas = await conn.fetch("SELECT * FROM comprobante_lineas WHERE comprobante_id = $1 ORDER BY orden", c["id"])
-    version = c["parametros_version_id"]
-    doc = await _descripcion(conn, version, "TiposDoc", c["receptor_doc_tipo"])
-    condicion = await _descripcion(conn, version, "CondicionIvaReceptor", c["condicion_iva_receptor"])
+    d = await datos_impresion(conn, c)
+    rs, lineas, doc, condicion, numero = d["rs"], d["lineas"], d["doc"], d["condicion"], d["numero"]
     e = escape
-    numero = f"{c['punto_venta']:05d}-{c['numero']:08d}"
     emisor = rs["nombre_fantasia"] or rs["nombre_legal"]
     titulo = f"{c['nombre']} {numero}"
     asunto = f"{titulo} de {emisor}"
@@ -178,17 +173,16 @@ async def mensaje_comprobante(conn: asyncpg.Connection, cfg, c, destinatario: st
         texto += [f"CAE {c['cae']}, vencimiento {_fecha(c['cae_vencimiento'])}."]
     if prueba:
         texto += ["Homologación ARCA, sin validez fiscal."]
+    texto += ["", "El comprobante va adjunto en PDF."]
     m.set_content("\n".join(texto))
 
     filas = "".join(f"<tr><td>{e(l['descripcion'])}</td><td align=\"right\">{e(_cantidad(l['cantidad']))}</td>"
                     f"<td align=\"right\">{e(_importe(l['precio_unitario']))}</td><td align=\"right\">{e(_importe(l['importe']))}</td></tr>" for l in lineas)
     qr_cid = None
     png = None
-    if c["cae"]:
-        qr = segno.make(texto_qr(rs["cuit"], c["fecha"], c["punto_venta"], c["codigo_arca"], c["numero"], c["importe_total"], c["moneda"],
-                                 c["cotizacion"], c["receptor_doc_tipo"], c["receptor_doc_nro"], c["cae"]), error="m")
+    if d["qr"] is not None:
         png = BytesIO()
-        qr.save(png, kind="png", scale=4, border=2)
+        d["qr"].save(png, kind="png", scale=4, border=2)
         qr_cid = make_msgid(domain="jzbill")
     autorizacion = (f"<p><strong>C.A.E. N° {e(c['cae'])}</strong> &middot; Fecha Vto.: {_fecha(c['cae_vencimiento'])}</p>"
                     f"<p><img src=\"cid:{qr_cid[1:-1]}\" alt=\"Código QR de ARCA\" width=\"140\" height=\"140\"></p>") if c["cae"] else \
@@ -196,19 +190,20 @@ async def mensaje_comprobante(conn: asyncpg.Connection, cfg, c, destinatario: st
     leyenda = "<p style=\"color:#777\">Homologación ARCA, sin validez fiscal.</p>" if prueba else ""
     html = f"""<!doctype html><html lang="es"><body style="font-family:Arial,Helvetica,sans-serif;color:#222;max-width:680px">
 <h2 style="margin-bottom:0">{e(titulo)}</h2>
-<p style="margin-top:4px">{e(rs['nombre_legal'])} &middot; CUIT {e(formatear_cuit(rs['cuit']))} &middot; {e(CONDICIONES_EMISOR.get(rs['condicion_iva'], rs['condicion_iva']))}<br>
-{e(c['emisor_domicilio'] or rs['domicilio'])}</p>
+<p style="margin-top:4px">{e(rs['nombre_legal'])} &middot; CUIT {e(formatear_cuit(rs['cuit']))} &middot; {e(d['condicion_emisor'])}<br>
+{e(d['domicilio'])}</p>
 <p>Fecha de emisión: {_fecha(c['fecha'])}<br>Receptor: {e(receptor)}<br>Condición frente al IVA: {e(condicion)}<br>Condiciones de venta: {e(c['condicion_venta'])}</p>
 <table cellpadding="6" cellspacing="0" border="0" style="border-collapse:collapse;width:100%">
 <thead><tr style="background:#eee"><th align="left">Descripción</th><th align="right">Cantidad</th><th align="right">Precio unitario</th><th align="right">Importe</th></tr></thead>
 <tbody>{filas}</tbody></table>
 <p style="font-size:1.2em"><strong>Total: {e(c['moneda'])} {e(_importe(c['importe_total']))}</strong></p>
 {autorizacion}{leyenda}
-<p style="color:#777;font-size:0.9em">Enviado por {e(emisor)} con JZBill.</p>
+<p style="color:#777;font-size:0.9em">El comprobante va adjunto en PDF. Enviado por {e(emisor)} con JZBill.</p>
 </body></html>"""
     m.add_alternative(html, subtype="html")
     if qr_cid:
         m.get_payload()[1].add_related(png.getvalue(), maintype="image", subtype="png", cid=qr_cid)
+    m.add_attachment(comprobante_pdf(d), maintype="application", subtype="pdf", filename=nombre_archivo(c, numero))
     return m
 
 

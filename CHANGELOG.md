@@ -2,6 +2,20 @@
 
 Cambios de JZBill, del más nuevo al más viejo.
 
+## 0.11.0 - 2026-10-30
+
+### Agregado
+- El comprobante en PDF: va adjunto en el correo (`Factura C 00001-00000001.pdf`) y se puede ver o guardar con el
+  botón PDF del comprobante emitido y de la lista de Comprobantes (`GET /comprobantes/{id}/pdf`, mismos permisos
+  que la impresión). Es la misma representación impresa de la RG 1415 que el HTML: emisor, letra con código,
+  número, fecha, CUIT, ingresos brutos e inicio de actividades, receptor, detalle con corte de página y
+  encabezado repetido, total, QR oficial de ARCA con C.A.E. y vencimiento, leyenda de homologación en modo prueba.
+- Generado con la biblioteca estándar (`pdf.py`: Helvetica, texto en WinAnsi, QR dibujado como rectángulos,
+  contenido comprimido con zlib). Sin dependencias nuevas: queda cerrado el pendiente de "biblioteca de PDF".
+
+### Cambiado
+- La impresión HTML y el correo toman los datos del mismo lugar (`impresion.datos_impresion`); el resultado no cambia.
+
 ## 0.10.0 - 2026-10-30
 
 Fase 9: actualizador, instalador y cierre del plan.

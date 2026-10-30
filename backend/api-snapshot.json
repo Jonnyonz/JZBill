@@ -311,6 +311,12 @@
       "path:comprobante_id"
     ]
   },
+  "GET /comprobantes/{comprobante_id}/pdf": {
+    "cuerpo": false,
+    "params": [
+      "path:comprobante_id"
+    ]
+  },
   "GET /panel": {
     "cuerpo": false,
     "params": []

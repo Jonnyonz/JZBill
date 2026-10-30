@@ -32,4 +32,5 @@ manylinux), `starlette` 1.7.0 (vía fastapi).
 ## Pendientes de evaluar (no agregadas)
 
 - Cliente ARCA (WSAA/WSFEv1): PyAfipWs o cliente propio. Decisión pendiente antes de la Fase 2.
-- Generación de PDF con QR (Fase 3).
+- Generación de PDF con QR: resuelta el 2026-10-30 con la biblioteca estándar (`backend/jzbill/pdf.py`, fuentes
+  base Helvetica, QR como rectángulos a partir de la matriz de segno, zlib). No hizo falta fpdf2 ni reportlab.
