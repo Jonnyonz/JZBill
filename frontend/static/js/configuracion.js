@@ -1,4 +1,4 @@
-// Configuracion (solo administrador): lo general de la instalacion. Por ahora, la conexion con Tracker360;
+// Integraciones (solo administrador, dentro del grupo Configuracion del menu): lo general de la instalacion. Por ahora, la conexion con Tracker360;
 // lo fiscal (razones sociales, certificados, parametros de ARCA) sigue en Razones sociales.
 'use strict';
 

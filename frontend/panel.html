@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>JZBill - Panel</title>
     <link rel="icon" type="image/svg+xml" href="/static/img/logo-jz.svg">
-    <link rel="stylesheet" href="/static/css/app.css?v=0.12.0">
-    <script src="/static/js/tema.js?v=0.12.0"></script>
+    <link rel="stylesheet" href="/static/css/app.css?v=0.12.1">
+    <script src="/static/js/tema.js?v=0.12.1"></script>
 </head>
 <body class="panel">
     <div class="acento-superior"></div>
@@ -57,26 +57,33 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18M7 15l4-5 3 3 5-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <span class="etiqueta-nav">Reportes</span>
         </button>
-        <button class="nav-btn oculto" type="button" data-vista="razones" data-admin title="Razones sociales">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21V5l8-3v19M12 9h8v12M7 8h2M7 12h2M7 16h2M15 13h2M15 17h2M2 21h20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span class="etiqueta-nav">Razones sociales</span>
-        </button>
-        <button class="nav-btn oculto" type="button" data-vista="sucursales" data-admin title="Sucursales">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9l2-5h14l2 5M3 9h18M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0M5 12v8h14v-8M10 20v-5h4v5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span class="etiqueta-nav">Sucursales</span>
-        </button>
-        <button class="nav-btn oculto" type="button" data-vista="usuarios" data-admin title="Usuarios">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 20v-2a4 4 0 0 0-3-3.9M16 2.1a4 4 0 0 1 0 7.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span class="etiqueta-nav">Usuarios</span>
-        </button>
-        <button class="nav-btn oculto" type="button" data-vista="configuracion" data-admin title="Configuración">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span class="etiqueta-nav">Configuración</span>
-        </button>
-        <button class="nav-btn oculto" type="button" data-vista="auditoria" data-admin title="Auditoría">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM9 12l2 2 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span class="etiqueta-nav">Auditoría</span>
-        </button>
+        <details id="grupo-config" class="grupo-nav oculto" data-admin>
+            <summary class="nav-btn" title="Configuración">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span class="etiqueta-nav">Configuración</span>
+                <svg class="flecha-nav" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </summary>
+            <button class="nav-btn" type="button" data-vista="razones" title="Razones sociales">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21V5l8-3v19M12 9h8v12M7 8h2M7 12h2M7 16h2M15 13h2M15 17h2M2 21h20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span class="etiqueta-nav">Razones sociales</span>
+            </button>
+            <button class="nav-btn" type="button" data-vista="sucursales" title="Sucursales">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9l2-5h14l2 5M3 9h18M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0M5 12v8h14v-8M10 20v-5h4v5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span class="etiqueta-nav">Sucursales</span>
+            </button>
+            <button class="nav-btn" type="button" data-vista="usuarios" title="Usuarios">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 20v-2a4 4 0 0 0-3-3.9M16 2.1a4 4 0 0 1 0 7.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span class="etiqueta-nav">Usuarios</span>
+            </button>
+            <button class="nav-btn" type="button" data-vista="configuracion" title="Integraciones">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0zM12 18v4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span class="etiqueta-nav">Integraciones</span>
+            </button>
+            <button class="nav-btn" type="button" data-vista="auditoria" title="Auditoría">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM9 12l2 2 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span class="etiqueta-nav">Auditoría</span>
+            </button>
+        </details>
         <div class="lateral-abajo">
             <button class="nav-btn" type="button" data-alternar-tema title="Tema claro u oscuro">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -135,18 +142,18 @@
     </div>
 
     <p id="mensaje" class="mensaje mensaje-flotante" role="alert"></p>
-    <script src="/static/js/api.js?v=0.12.0"></script>
-    <script src="/static/js/clientes.js?v=0.12.0"></script>
-    <script src="/static/js/articulos.js?v=0.12.0"></script>
-    <script src="/static/js/ofertas.js?v=0.12.0"></script>
-    <script src="/static/js/facturacion.js?v=0.12.0"></script>
-    <script src="/static/js/caja.js?v=0.12.0"></script>
-    <script src="/static/js/reportes.js?v=0.12.0"></script>
-    <script src="/static/js/admin-razones.js?v=0.12.0"></script>
-    <script src="/static/js/admin-sucursales.js?v=0.12.0"></script>
-    <script src="/static/js/admin-usuarios.js?v=0.12.0"></script>
-    <script src="/static/js/admin-auditoria.js?v=0.12.0"></script>
-    <script src="/static/js/configuracion.js?v=0.12.0"></script>
-    <script src="/static/js/panel.js?v=0.12.0"></script>
+    <script src="/static/js/api.js?v=0.12.1"></script>
+    <script src="/static/js/clientes.js?v=0.12.1"></script>
+    <script src="/static/js/articulos.js?v=0.12.1"></script>
+    <script src="/static/js/ofertas.js?v=0.12.1"></script>
+    <script src="/static/js/facturacion.js?v=0.12.1"></script>
+    <script src="/static/js/caja.js?v=0.12.1"></script>
+    <script src="/static/js/reportes.js?v=0.12.1"></script>
+    <script src="/static/js/admin-razones.js?v=0.12.1"></script>
+    <script src="/static/js/admin-sucursales.js?v=0.12.1"></script>
+    <script src="/static/js/admin-usuarios.js?v=0.12.1"></script>
+    <script src="/static/js/admin-auditoria.js?v=0.12.1"></script>
+    <script src="/static/js/configuracion.js?v=0.12.1"></script>
+    <script src="/static/js/panel.js?v=0.12.1"></script>
 </body>
 </html>

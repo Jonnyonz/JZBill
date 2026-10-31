@@ -2,6 +2,14 @@
 
 Cambios de JZBill, del más nuevo al más viejo.
 
+## 0.12.1 - 2026-10-31
+
+### Cambiado
+- Barra lateral más corta (pedido de Jonny): Razones sociales, Sucursales, Usuarios, Integraciones y Auditoría
+  quedan dentro de un desplegable Configuración (solo administrador), que se abre solo cuando la pantalla activa
+  está adentro. La pantalla de conexión con Tracker360, correo y cola de ventas pasa a llamarse Integraciones
+  (misma dirección `#configuracion`).
+
 ## 0.12.0 - 2026-10-30
 
 ### Cambiado

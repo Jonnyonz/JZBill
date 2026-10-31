@@ -110,7 +110,7 @@ sudo ./install-docker.sh` y, si el esquema cambió, restaurar el respaldo de `/e
 clave maestra (`/etc/jzbill/clave-secretos` o `/etc/jzbill-docker/clave-secretos`). Sin la clave, los
 certificados de ARCA y las claves SMTP y de Tracker360 guardados en la base no se recuperan; con las dos juntas,
 quedan expuestos. Si se pierde la clave maestra, se genera una nueva al reinstalar y hay que volver a cargar los
-certificados de ARCA (Razones sociales, Certificados) y las claves de Configuración.
+certificados de ARCA (Razones sociales, Certificados) y las claves de Integraciones (menú Configuración).
 
 **Certificado de ARCA vencido, comprometido o revocado.** El certificado vale dos años. Desde Razones sociales,
 Certificados: pedir uno nuevo (JZBill genera la clave privada y el CSR; la clave nunca sale del servidor), subir

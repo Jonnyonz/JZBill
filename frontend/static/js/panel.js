@@ -6,7 +6,7 @@
 const ROLES = { administrador: 'Administrador', supervisor: 'Supervisor', cajero: 'Cajero', solo_lectura: 'Solo lectura' };
 const MODOS = { empresa: 'Empresa', prueba: 'Prueba' };
 const TITULOS = { inicio: 'Inicio', facturar: 'Facturar', comprobantes: 'Comprobantes', clientes: 'Clientes', articulos: 'Artículos', ofertas: 'Ofertas', caja: 'Caja', reportes: 'Reportes', razones: 'Razones sociales',
-                  sucursales: 'Sucursales', usuarios: 'Usuarios', auditoria: 'Auditoría', configuracion: 'Configuración', cuenta: 'Mi cuenta' };
+                  sucursales: 'Sucursales', usuarios: 'Usuarios', auditoria: 'Auditoría', configuracion: 'Integraciones', cuenta: 'Mi cuenta' };
 const ROLES_EMITEN = ['administrador', 'supervisor', 'cajero'];
 const VISTAS_ADMIN = ['razones', 'sucursales', 'usuarios', 'auditoria', 'configuracion'];
 
@@ -141,6 +141,10 @@ function mostrarVista(nombre) {
     }
     document.querySelectorAll('.nav-btn[data-vista]').forEach(b => b.classList.toggle('activo', b.dataset.vista === nombre));
     document.getElementById('titulo-vista').textContent = TITULOS[nombre];
+    // El grupo Configuración se despliega solo cuando la vista activa está adentro.
+    const grupo = document.getElementById('grupo-config');
+    grupo.classList.toggle('contiene-activo', VISTAS_ADMIN.includes(nombre));
+    if (VISTAS_ADMIN.includes(nombre)) grupo.open = true;
     const contenedor = document.getElementById('vista-' + nombre);
     if (nombre === 'inicio') vistaInicio(contenedor);
     else if (nombre === 'facturar') vistaFacturar(contenedor);
@@ -169,7 +173,7 @@ const DESCRIPCIONES = {
     razones: 'Razones sociales, puntos de venta y certificados de ARCA.',
     sucursales: 'Sucursales y puntos de venta asignados.',
     usuarios: 'Usuarios, roles y accesos.',
-    configuracion: 'Tracker360, correo y cola de ventas.',
+    configuracion: 'Conexión con Tracker360, correo saliente y cola de ventas.',
     auditoria: 'Quién hizo qué y cuándo.',
 };
 
@@ -177,7 +181,7 @@ function panelCentral() {
     const grilla = el('div', { class: 'grilla-modulos' });
     document.querySelectorAll('.nav-btn[data-vista]').forEach(b => {
         const vista = b.dataset.vista;
-        if (vista === 'inicio' || b.classList.contains('oculto')) return;
+        if (vista === 'inicio' || b.closest('.oculto')) return;
         const tarjeta = el('button', { type: 'button', class: 'modulo' },
             el('h3', {}, b.querySelector('svg').cloneNode(true), TITULOS[vista]),
             el('p', {}, DESCRIPCIONES[vista] || ''));
@@ -240,7 +244,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     document.getElementById('avatar').textContent = iniciales(Panel.yo.nombre || Panel.yo.usuario);
     document.getElementById('avatar-nombre').textContent = Panel.yo.nombre || Panel.yo.usuario;
-    if (esAdmin()) document.querySelectorAll('.nav-btn[data-admin]').forEach(b => b.classList.remove('oculto'));
+    if (esAdmin()) document.querySelectorAll('[data-admin]').forEach(b => b.classList.remove('oculto'));
     if (emite()) document.querySelectorAll('.nav-btn[data-emite]').forEach(b => b.classList.remove('oculto'));
     document.querySelectorAll('.nav-btn[data-vista]').forEach(b => b.addEventListener('click', () => {
         location.hash = '#' + b.dataset.vista;
