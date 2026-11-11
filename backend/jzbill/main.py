@@ -11,6 +11,7 @@ from fastapi import Depends, FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from jztech_core.security_headers import SecurityHeadersMiddleware
+from jztech_core.ui import montar_ui
 
 from jzbill import (__version__, arca_api, articulos, auditoria, auth, caja, certificados, clientes, tracker, comprobantes, contexto, correo,
                     db, formularios, impresion, ofertas, razones_sociales, reportes, sucursales, tracker_cola, usuarios)
@@ -37,6 +38,7 @@ CSP = "; ".join([
 RUTAS_PUBLICAS = [
     "/",
     "/panel",
+    "/jz/suite.css",   # hoja de estilos comun de la suite (jztech-core), sin datos
     "/api/health",
     "/api/auth/setup/status",
     "/api/auth/setup/admin",
@@ -100,6 +102,8 @@ app.include_router(correo.router_envios)
 app.include_router(tracker.router)
 app.include_router(tracker.router_importacion)
 app.include_router(tracker_cola.router)
+# Sistema visual comun de la suite: GET /jz/suite.css (paleta clara/oscura, reset, botones, badges) desde jztech-core.
+montar_ui(app)
 
 
 @app.get("/api/health")

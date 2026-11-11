@@ -303,8 +303,8 @@ idna==3.20 \
     --hash=sha256:a7db850025b95ded1eae8a46181a1a6c56c92c96f0e2b005d9ff8dc0210cab44 \
     --hash=sha256:ab7ae7122974553370f0bdb919e1a960b2cd1bc1ef0276416d896db81c14582c
     # via anyio
-jztech-core @ https://github.com/Jonnyonz/jztech-core/releases/download/v0.1.5/jztech_core-0.1.5-py3-none-any.whl \
-    --hash=sha256:86fe7da6ce7ffaf77c6111592faead17f9a778012161594cab9651c09961f715
+jztech-core @ https://github.com/Jonnyonz/jztech-core/releases/download/v0.2.0/jztech_core-0.2.0-py3-none-any.whl \
+    --hash=sha256:b12689ea2a7f8d4142e382ba6eed74b4343ccb0c129bad7c883dc451d63bdb0c
     # via -r requirements.in
 pycparser==3.0 \
     --hash=sha256:600f49d217304a5902ac3c37e1281c9fe94e4d0489de643a9504c5cdfdfc6b29 \

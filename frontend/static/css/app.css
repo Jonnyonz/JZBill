@@ -1,53 +1,19 @@
-/* JZBill. Sistema visual de JZTech Suite, calcado de JZPass (pedido de Jonny 2026-10-30): mismos tokens de color,
-   barra de acento, barra lateral de iconos que se expande, tarjetas, tablas, etiquetas, avisos y pie con el logo
-   JZ. Sin dependencias externas ni nada inline (CSP estricta). Tema claro y oscuro con data-theme en <html>
-   (ver tema.js). Las medidas (paddings, tamaños, radios) son las de JZPass. */
+/* JZBill. Sistema visual de JZTech Suite: la paleta clara y oscura, el reset, los enlaces y .muted vienen de
+   /jz/suite.css (jztech-core), que index.html y panel.html enlazan ANTES de esta hoja; los tokens viejos (--bg-page,
+   --accent, --border...) son alias que define esa hoja. Aca quedan los tokens propios de JZBill (sobre los de la
+   suite) y lo propio de sus pantallas: barra de acento, barra lateral, tarjetas, tablas, etiquetas, avisos y pie.
+   Sin dependencias externas ni nada inline (CSP estricta). Tema con data-theme en <html> (ver tema.js). */
 :root {
-    --bg-page: #f4f6f9;
-    --bg-surface: #ffffff;
-    --accent: #2962ff;
-    --accent-hover: #1f4fd1;
-    --success: #00c853;
-    --danger: #d50000;
-    --warning: #ffc107;
-    --text-primary: #212529;
-    --text-secondary: #666666;
-    --text-muted: #999999;
-    --border: #e0e0e0;
-    --table-hover: #f8f9fa;
-    --filter-bg: #fdfdfd;
-    --badge-success-bg: #e8f5e9; --badge-success-text: #1b5e20;
-    --badge-danger-bg: #ffebee; --badge-danger-text: #b71c1c;
-    --badge-warning-bg: #fff8e1; --badge-warning-text: #f57f17;
-    --badge-info-bg: #e3f2fd; --badge-info-text: #0d47a1;
-    --badge-neutral-bg: #f5f5f5; --badge-neutral-text: #616161;
-    --shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    --table-hover: var(--sf2); --filter-bg: var(--sf2);
+    --badge-success-bg: var(--oks); --badge-success-text: var(--okt);
+    --badge-danger-bg: var(--dgs); --badge-danger-text: var(--dgt);
+    --badge-warning-bg: var(--wns); --badge-warning-text: var(--wnt);
+    --badge-info-bg: var(--acs); --badge-info-text: var(--act);
+    --badge-neutral-bg: var(--ne); --badge-neutral-text: var(--net);
     color-scheme: light;
 }
-[data-theme="dark"] {
-    --bg-page: #121212;
-    --bg-surface: #1e1e1e;
-    --accent: #4475ff;
-    --accent-hover: #5c8aff;
-    --success: #00e676;
-    --danger: #ff5252;
-    --warning: #ffd740;
-    --text-primary: #e0e0e0;
-    --text-secondary: #aaaaaa;
-    --text-muted: #777777;
-    --border: #333333;
-    --table-hover: #2a2a2a;
-    --filter-bg: #181818;
-    --badge-success-bg: rgba(0, 200, 83, 0.15); --badge-success-text: #69f0ae;
-    --badge-danger-bg: rgba(213, 0, 0, 0.15); --badge-danger-text: #ff8a80;
-    --badge-warning-bg: rgba(255, 193, 7, 0.15); --badge-warning-text: #ffe57f;
-    --badge-info-bg: rgba(41, 98, 255, 0.15); --badge-info-text: #82b1ff;
-    --badge-neutral-bg: rgba(255, 255, 255, 0.1); --badge-neutral-text: #cccccc;
-    --shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    color-scheme: dark;
-}
+[data-theme="dark"] { color-scheme: dark; }
 
-* { box-sizing: border-box; }
 body {
     margin: 0;
     font-family: system-ui, -apple-system, sans-serif;
@@ -60,7 +26,6 @@ body {
 h1 { font-size: 20px; margin: 0; font-weight: 600; }
 h2 { font-size: 16px; margin: 0 0 12px; font-weight: 600; }
 h3 { font-size: 15px; margin: 0; font-weight: 600; }
-a { color: var(--accent); }
 .sub { margin: 0; color: var(--text-muted); font-size: 13px; }
 .ayuda { color: var(--text-secondary); font-size: 13px; margin: 0 0 4px; }
 .ayuda-centrada { text-align: center; }

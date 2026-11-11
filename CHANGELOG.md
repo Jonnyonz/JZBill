@@ -2,6 +2,17 @@
 
 Cambios de JZBill, del más nuevo al más viejo.
 
+## 0.12.2 - 2026-11-11
+
+### Cambiado
+- **jztech-core 0.1.5 → 0.2.0 y paleta de la suite.** `index.html` y `panel.html` enlazan `/jz/suite.css` (servida por la
+  librería) antes de `app.css`: los tokens de JZBill pasan a ser alias de la paleta común de JZTech Suite, la misma de
+  JZPass, Tracker360 y el Escáner Flex, en claro y en oscuro. En `app.css` quedan solo los tokens propios (fondos y
+  textos de las etiquetas, hover de tablas, fondo de filtros) sobre los de la suite. Cambios visibles: fondos y grises
+  algo más fríos, tarjetas sin sombra, enlaces sin subrayado. La ruta nueva es pública (CSS sin datos) y figura en
+  `RUTAS_PUBLICAS` y en el test de denegar por defecto. Trae además los arreglos del core 0.1.6 (argon2-cffi hasta 25.x)
+  y 0.1.7 (deny-by-default recorre los routers incluidos con FastAPI 0.141+).
+
 ## 0.12.1 - 2026-10-31
 
 ### Cambiado
