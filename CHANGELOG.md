@@ -2,6 +2,18 @@
 
 Cambios de JZBill, del más nuevo al más viejo.
 
+## 0.13.0 - 2026-11-16
+
+### Agregado
+- **Política de Privacidad y Términos y Condiciones de Uso.** Dos páginas nuevas, `/static/privacy.html` y
+  `/static/terms.html`, con Volver (también con Esc), enlazadas desde el pie del acceso y del panel. Son archivos
+  estáticos: no agregan rutas ni cambian el contrato de la API. La política sigue la Ley 25.326 y dice lo que el
+  sistema hace de verdad: qué datos guarda de usuarios, clientes y comprobantes, qué se le envía a ARCA al emitir y
+  al consultar el padrón, qué lleva el correo y el QR, qué se le informa a Tracker360, qué se guarda cifrado y que
+  los comprobantes y la auditoría no se borran. Los términos dejan claro que el emisor y responsable fiscal es la
+  organización, qué valen el modo prueba y los documentos no electrónicos, y que JZBill no da asesoramiento
+  impositivo.
+
 ## 0.12.2 - 2026-11-11
 
 ### Cambiado

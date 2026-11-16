@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>JZBill - Política de Privacidad</title>
+    <link rel="icon" type="image/svg+xml" href="/static/img/logo-jz.svg">
+    <link rel="stylesheet" href="/jz/suite.css?v=0.2.0">
+    <link rel="stylesheet" href="/static/css/app.css?v=0.13.0">
+    <script src="/static/js/tema.js?v=0.13.0"></script>
+    <script src="/static/js/documento.js?v=0.13.0"></script>
+</head>
+<body>
+    <div class="acento-superior"></div>
+    <button class="tema-flotante" type="button" data-alternar-tema aria-label="Tema claro u oscuro" title="Tema claro u oscuro">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+
+    <main class="doc">
+        <a class="doc-volver" href="/" data-volver>&larr; Volver</a>
+        <h1>Política de Privacidad</h1>
+        <p class="ayuda">Última actualización: noviembre de 2026.</p>
+        <p>JZBill es un sistema de facturación electrónica que cada organización instala en su propio servidor. Esta política explica qué datos personales se tratan, para qué y qué derechos tienen las personas, conforme a la <strong>Ley 25.326 de Protección de los Datos Personales</strong>, su Decreto reglamentario 1558/2001 y las normas de la Agencia de Acceso a la Información Pública (AAIP).</p>
+        <ul>
+            <li><strong>Responsable de los datos:</strong> la organización que usa JZBill para facturar. Es la que decide qué datos se cargan, para qué y por cuánto tiempo, y ante quien se ejercen los derechos.</li>
+            <li><strong>JZ Tech Solutions</strong> provee el software, su instalación y el soporte técnico. Cuando accede a los datos para dar soporte o administra el servidor por cuenta de la organización, actúa como <strong>prestador de servicios de tratamiento</strong> (art. 25 de la Ley 25.326): los usa solo para esa tarea, los mantiene en reserva, no los cede a terceros y, al terminar el servicio, no conserva copias. JZ Tech Solutions es el nombre de fantasía (<strong>JZTech-Solutions</strong>) de Jonaiker Jimenez, CUIT 20-95803618-4, Responsable Monotributo, con domicilio en General Urquiza 1240, Ciudad Autónoma de Buenos Aires.</li>
+        </ul>
+
+        <h2>1. Qué datos se tratan</h2>
+        <ul>
+            <li><strong>Usuarios del sistema:</strong> nombre de usuario, nombre, rol y las razones sociales, puntos de venta y sucursales a los que accede. La contraseña nunca se guarda: se guarda solo su resumen protegido con Argon2id.</li>
+            <li><strong>Razones sociales emisoras:</strong> CUIT, nombre legal y de fantasía, condición frente al IVA, domicilio, ingresos brutos e inicio de actividades.</li>
+            <li><strong>Clientes:</strong> tipo y número de documento (CUIT, CUIL o DNI), nombre, condición frente al IVA, domicilio y correo electrónico.</li>
+            <li><strong>Comprobantes:</strong> una copia de los datos del receptor al momento de emitir, los importes, el CAE y el usuario que lo emitió.</li>
+            <li><strong>Caja:</strong> quién abrió y cerró cada planilla y quién cargó cada movimiento.</li>
+            <li><strong>Envíos por correo:</strong> a qué dirección se envió cada comprobante.</li>
+            <li><strong>Registro de auditoría:</strong> qué acción se hizo, quién, cuándo y desde qué dirección IP: ingresos correctos y fallidos, cambios de usuarios y clientes, comprobantes emitidos, rechazados y enviados, consultas al padrón de ARCA y movimientos de caja.</li>
+            <li><strong>Certificados digitales de ARCA</strong> y sus claves privadas, que se guardan cifrados.</li>
+        </ul>
+        <p>JZBill <strong>no pide ni está pensado para guardar datos sensibles</strong> (art. 2 de la Ley 25.326). La organización no debe cargarlos en campos de texto libre.</p>
+
+        <h2>2. Para qué se usan</h2>
+        <ul>
+            <li>Dar acceso a cada usuario según su rol y su alcance.</li>
+            <li>Emitir los comprobantes con los datos que exigen las normas de ARCA.</li>
+            <li>Llevar la caja y los reportes de ventas.</li>
+            <li>Enviar los comprobantes a los clientes.</li>
+            <li>Proteger el sistema contra accesos no autorizados y dejar registro de lo que se hizo.</li>
+        </ul>
+        <p>Los datos no se usan para fines distintos de estos (art. 4 de la Ley 25.326): <strong>ni para publicidad ni para crear perfiles de las personas</strong>.</p>
+
+        <h2>3. Base del tratamiento</h2>
+        <p>Los datos de los clientes se tratan porque son necesarios para cumplir la venta y porque las normas fiscales obligan a identificar al receptor de cada comprobante; los de los usuarios, porque son necesarios para la relación laboral o contractual que tienen con la organización. En esos casos la ley no exige un consentimiento aparte (art. 5, inc. 2, de la Ley 25.326).</p>
+
+        <h2>4. Dónde se guardan y con quién se comparten</h2>
+        <p>Los datos quedan en el servidor de la organización. <strong>No se venden, no se alquilan y no se ceden a terceros con fines comerciales o publicitarios.</strong> Solo salen del servidor en estos casos:</p>
+        <ul>
+            <li><strong>ARCA, al emitir un comprobante electrónico:</strong> el CUIT del emisor, el tipo y número de documento del receptor, su condición frente al IVA, las fechas, los importes, la moneda y el comprobante asociado si lo hay. No se le envían el nombre, el domicilio ni el detalle de los artículos.</li>
+            <li><strong>ARCA, al consultar el padrón:</strong> el CUIT consultado. ARCA devuelve el nombre y el domicilio fiscal, que se guardan solo si el usuario confirma el cliente.</li>
+            <li><strong>Correo electrónico:</strong> el comprobante se envía al correo del cliente a través del servidor de correo que configura cada razón social, cuando un usuario lo pide o de forma automática si la organización lo activa.</li>
+            <li><strong>Código QR del comprobante:</strong> contiene la fecha, el CUIT del emisor, el punto de venta, el tipo y número de comprobante, el importe, la moneda, el documento del receptor y el CAE. Quien lo lee es dirigido al sitio de ARCA.</li>
+            <li><strong>Tracker360</strong>, si un administrador carga la conexión: JZBill lee el catálogo y el stock y, por cada venta real con artículos, le informa el CUIT del emisor, el nombre, el CUIT y el domicilio del comprador, y los artículos y cantidades. Las ventas en modo prueba no se informan.</li>
+            <li><strong>Soporte técnico:</strong> JZ Tech Solutions puede acceder a los datos solo cuando la organización lo pide para resolver un problema, en las condiciones del art. 25 indicadas arriba.</li>
+            <li><strong>Autoridades:</strong> cuando lo ordene un juez o lo exija una ley.</li>
+        </ul>
+        <p>El actualizador, que se ejecuta a mano, consulta las versiones públicas en GitHub sin enviar datos de la organización. JZBill no carga recursos de otros sitios (fuentes, medición de visitas).</p>
+
+        <h2>5. Cookies y almacenamiento en el navegador</h2>
+        <ul>
+            <li><strong>Cookie de sesión:</strong> identifica la sesión iniciada. Es <code>HttpOnly</code>, <code>Secure</code> y <code>SameSite=Strict</code>, y vence a las 8 horas, salvo que la organización configure otro plazo.</li>
+            <li><strong>Cookie de protección CSRF:</strong> impide que otro sitio haga acciones en nombre del usuario.</li>
+            <li><strong>Preferencia de tema</strong> (claro u oscuro), guardada en el navegador.</li>
+        </ul>
+        <p>Son técnicas, necesarias para que el sistema funcione. <strong>No se usan cookies publicitarias, de análisis ni de seguimiento.</strong></p>
+
+        <h2>6. Seguridad y confidencialidad</h2>
+        <p>JZBill incluye estas medidas técnicas para proteger los datos (arts. 9 y 10 de la Ley 25.326):</p>
+        <ul>
+            <li>Contraseñas protegidas con Argon2id, de al menos 10 caracteres.</li>
+            <li>Sesiones guardadas en el servidor solo como resumen, y protección contra CSRF.</li>
+            <li>Límite de intentos de ingreso por usuario y por dirección IP, con bloqueo de 15 minutos.</li>
+            <li>Los certificados, sus claves privadas, la contraseña del correo y la clave de Tracker360 se guardan cifrados con AES-256-GCM, con una clave que está fuera de la base de datos. El sistema nunca los muestra.</li>
+            <li>Acceso según el rol y limitado a las razones sociales y puntos de venta asignados a cada usuario. Los clientes son comunes a todas las razones sociales de la instalación: los puede consultar cualquier usuario.</li>
+            <li>Los comprobantes emitidos y el registro de auditoría no se pueden modificar ni borrar.</li>
+            <li>Copia de la base de datos antes de cada actualización.</li>
+        </ul>
+        <p>La seguridad del servidor (accesos, resguardo de las copias, actualizaciones del sistema operativo y de JZBill) está a cargo de la organización o de quien ella designe. Salvo los secretos indicados, la base de datos no se cifra en el disco. Como guía se recomiendan las medidas de la Resolución AAIP 47/2018. Quienes acceden a los datos deben guardar secreto sobre ellos, aun después de terminada su relación con la organización (art. 10).</p>
+
+        <h2>7. Cuánto tiempo se conservan</h2>
+        <ul>
+            <li><strong>Los comprobantes emitidos no se modifican ni se borran:</strong> se corrigen con una nota de crédito o de débito. La organización debe conservar su documentación comercial y fiscal por los plazos que fija la ley (diez años, art. 328 del Código Civil y Comercial).</li>
+            <li>Los usuarios y los clientes se desactivan, no se borran, porque figuran en comprobantes ya emitidos.</li>
+            <li>El registro de auditoría no se borra.</li>
+            <li>De las copias de la base previas a cada actualización se guardan las últimas 10.</li>
+            <li>Las sesiones vencen según el tiempo configurado y al cerrar sesión.</li>
+        </ul>
+
+        <h2>8. Derechos de las personas</h2>
+        <p>Toda persona cuyos datos estén en el sistema puede pedirle a la organización que usa JZBill:</p>
+        <ul>
+            <li><strong>Acceso:</strong> saber qué datos suyos hay y para qué se usan. Es gratuito si se pide a intervalos no menores a seis meses, y la respuesta debe darse dentro de los diez días corridos (art. 14).</li>
+            <li><strong>Rectificación, actualización o supresión</strong> de los datos que sean inexactos, estén incompletos o ya no sean necesarios. La organización debe resolverlo dentro de los cinco días hábiles (art. 16). Los datos que figuran en comprobantes emitidos no se pueden suprimir mientras la ley obligue a conservarlos.</li>
+        </ul>
+        <p class="doc-nota"><strong>El titular de los datos personales tiene la facultad de ejercer el derecho de acceso a los mismos en forma gratuita a intervalos no inferiores a seis meses, salvo que se acredite un interés legítimo al efecto conforme lo establecido en el artículo 14, inciso 3 de la Ley Nº 25.326. La AGENCIA DE ACCESO A LA INFORMACIÓN PÚBLICA, en su carácter de Órgano de Control de la Ley Nº 25.326, tiene la atribución de atender las denuncias y reclamos que interpongan quienes resulten afectados en sus derechos por incumplimiento de las normas vigentes en materia de protección de datos personales.</strong> (<a href="https://www.argentina.gob.ar/aaip" target="_blank" rel="noopener noreferrer">www.argentina.gob.ar/aaip</a>)</p>
+
+        <h2>9. Qué le corresponde a la organización</h2>
+        <ul>
+            <li>Informar a sus empleados y clientes que sus datos se cargan en el sistema y para qué (art. 6).</li>
+            <li>Inscribir sus bases de datos en el Registro Nacional de Bases de Datos de la AAIP cuando corresponda (art. 21).</li>
+            <li>Atender los pedidos de acceso, rectificación y supresión en los plazos de la ley.</li>
+            <li>Cargar solo los datos necesarios, custodiar sus certificados y mantener el servidor seguro y actualizado.</li>
+        </ul>
+
+        <h2>10. Cambios y contacto</h2>
+        <p>Esta política puede actualizarse cuando cambie el sistema o la normativa; la fecha de arriba indica la última versión. Los pedidos sobre datos personales se dirigen a la organización que usa JZBill. Para consultas técnicas sobre el tratamiento de los datos en el sistema: <a href="mailto:jonaiker.jimenez.g@gmail.com?subject=Privacidad%20JZBill">jonaiker.jimenez.g@gmail.com</a>.</p>
+        <p>Ver también los <a href="/static/terms.html">Términos y Condiciones de Uso</a>.</p>
+    </main>
+
+    <footer class="pie-suite">
+        <img class="logo-jz marca-agua" src="/static/img/logo-jz.svg" alt="" width="24" height="24">
+        <span>Powered by <a href="https://jztech.com.ar" target="_blank" rel="noopener noreferrer">JZ Tech Solutions</a></span>
+    </footer>
+</body>
+</html>
